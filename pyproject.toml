@@ -1,0 +1,20 @@
+[project]
+name = "data-agent"
+version = "0.0.0"
+description = "A project on data visualization and analyzing with agent. This is a task for MTAI master's program."
+authors = [
+    {name = "KirillPal",email = "kirpall@ya.ru"}
+]
+packages = [
+    { include = "data_agent" }
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+langchain = "^0.3.27"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
