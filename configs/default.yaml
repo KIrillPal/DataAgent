@@ -1,0 +1,4 @@
+defaults:
+  - model: gpt-3.5-turbo.yaml
+  - agent: chain.yaml
+  - app: default.yaml
