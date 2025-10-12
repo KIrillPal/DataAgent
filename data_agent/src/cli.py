@@ -16,7 +16,6 @@ def main(cfg: DictConfig) -> None:
     Args:
         cfg: Hydra configuration
     """
-    # Initialize DataAgent with the provided configuration
     load_dotenv()  # Load environment variables to get API keys if present
 
     agent = DataAgent(cfg)
@@ -31,16 +30,11 @@ def main(cfg: DictConfig) -> None:
                 print("Goodbye!")
                 break
                 
-            # Get current working directory for context
-            cwd = os.getcwd()
-            
-            # Format the question with directory context
             prompt = f"""
-            Current working directory: {cwd}
-            
+            Current working directory: {os.getcwd()}
             Question: {question}
             """
-            
+
             # Run the agent with the prompt
             messages = agent.run(prompt, verbose=verbose)
 
@@ -52,8 +46,6 @@ def main(cfg: DictConfig) -> None:
         except KeyboardInterrupt:
             print("\nGoodbye!")
             break
-        except Exception as e:
-            print(f"\nError: {str(e)}")
 
 if __name__ == "__main__":
     main()

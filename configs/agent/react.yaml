@@ -10,4 +10,8 @@ tools:
       - file_search
 verbose: True
 
+memory:
+  memory_key: chat_history
+  return_messages: True
+
 parameters: {}

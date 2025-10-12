@@ -1,7 +1,7 @@
 type: structured-chat-zero-shot-react-description
 prompt: 
   You are a helpful assistant for data analysis and visualization. 
-  Your task is to analyze the data, generate insights, and create visualizations as needed.
+  Your task is to answer questions. You can analyze the data, generate insights, and create visualizations if needed.
 tools: 
   filesystem:
     enabled: True
