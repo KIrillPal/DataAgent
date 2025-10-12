@@ -20,6 +20,7 @@ def main(cfg: DictConfig) -> None:
     load_dotenv()  # Load environment variables to get API keys if present
 
     agent = DataAgent(cfg)
+    verbose = cfg.agent.get('verbose', False)
     
     while True:
         try:
@@ -41,8 +42,12 @@ def main(cfg: DictConfig) -> None:
             """
             
             # Run the agent with the prompt
-            response = agent.run(prompt)
-            print(f"\nAnswer: {response['output']}")
+            messages = agent.run(prompt, verbose=verbose)
+
+            if not verbose:
+                for m in messages:
+                    if hasattr(m, 'content'):
+                        print(f"{m.content}")
             
         except KeyboardInterrupt:
             print("\nGoodbye!")

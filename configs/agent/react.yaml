@@ -1,4 +1,3 @@
-type: structured-chat-zero-shot-react-description
 prompt: 
   You are a helpful assistant for data analysis and visualization. 
   Your task is to analyze the data, generate insights, and create visualizations as needed.
@@ -9,7 +8,6 @@ tools:
       - read_file
       - list_directory
       - file_search
+verbose: True
 
-parameters:
-  verbose: True
-  handle_parsing_errors: True
+parameters: {}
