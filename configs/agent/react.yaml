@@ -8,6 +8,7 @@ tools:
       - read_file
       - list_directory
       - file_search
+    visualize: True
 verbose: True
 
 memory:

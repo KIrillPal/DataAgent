@@ -7,6 +7,8 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig
 from .data_agent import DataAgent
+from . import server
+import uvicorn
 
 @hydra.main(config_path="../../configs", config_name="default", version_base=None)
 def main(cfg: DictConfig) -> None:
@@ -17,6 +19,14 @@ def main(cfg: DictConfig) -> None:
         cfg: Hydra configuration
     """
     load_dotenv()  # Load environment variables to get API keys if present
+
+    # If configured to run server, launch FastAPI app
+    if cfg.app.get('run_server', False):
+        host = cfg.app.get('host', '127.0.0.1')
+        port = int(cfg.app.get('port', 8080))
+        # serve static files and API
+        uvicorn.run(server.app, host=host, port=port)
+        return
 
     agent = DataAgent(cfg)
     verbose = cfg.agent.get('verbose', False)

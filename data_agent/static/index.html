@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DataAgent UI</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <div class="container">
+      <aside class="sidebar">
+        <div class="fs-header">AGRO</div>
+        <div id="fs-tree" class="fs-tree"></div>
+      </aside>
+
+      <main class="main">
+        <div class="chat-area">
+          <div class="chat-top">
+            <input id="query" class="query" placeholder="Ask about datasets or files..." />
+            <button id="send">Send</button>
+          </div>
+
+          <div id="messages" class="messages"></div>
+
+          <div class="chat-tools">
+            <button id="btn-list">Analyze @data folder</button>
+            <button id="btn-describe">Describe dataset types</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
