@@ -1,8 +1,11 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 import os
-from langchain.memory import ConversationBufferMemory as MemBuffer
+import uuid
+from langgraph.checkpoint.memory import MemorySaver
 from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
+from langgraph.graph import StateGraph, START, MessagesState
+from langchain_core.messages import BaseMessage, HumanMessage
 
 from .tools import init as init_tools
 
@@ -11,19 +14,19 @@ class DataAgent:
 
     def __init__(self, config):
         self.config = config
-        self.model  = self.init_model(config['model'])
-        self.agent  = self.init_agent(config['agent'])
-        self.memory = self.init_memory(config['agent'].get('memory', None))
+        self.model = self.init_model(config['model'])
+        self.thread_id = str(uuid.uuid4())
+        (self.agent, self.memory) = self.init_agent(config['agent'])
 
-    def init_model(self, model_config : Dict) -> Any:
+    def init_model(self, model_config: Dict) -> Any:
         """
         Initialize the chat model based on the configuration.
+        
         Args:
             model_config: Configuration dictionary for the model
         Returns:
             Initialized chat model instance
         """
-        # Load the API-based model
         provider = model_config['provider']
         model_name = model_config['model']
 
@@ -37,74 +40,64 @@ class DataAgent:
         )
         return model
 
-    def init_agent(self, agent_config : Dict) -> Any:
+    def init_agent(self, agent_config: Dict) -> Any:
         """
-        Initialize the agent with the specified tools and prompt.
+        Initialize the agent with memory.
+
         Args:
             agent_config: Configuration dictionary for the agent
         Returns:
-            Initialized agent instance
+            Tuple of (agent instance, memory instance)
         """
         tool_names = agent_config.get('tools', {})
         self.tools = init_tools(tool_names)
         self.system_prompt = agent_config.get('prompt', '')
 
+        memory = MemorySaver()
+        
         agent = create_react_agent(
             model=self.model,
             tools=self.tools, 
             prompt=self.system_prompt,
+            checkpointer=memory,
             **agent_config.get('parameters', {})
         )
-        return agent
-
-    def init_memory(self, memory_config : Optional[Dict] = None) -> Optional[MemBuffer]:
-        """
-        Initialize the conversation memory.
-        Args:
-            memory_config: Configuration dictionary for memory. If None, no memory is used.
-        Returns:
-            Memory instance
-        """
-        if memory_config is None:
-            return None
         
-        memory = MemBuffer(
-            **memory_config
-        )
-        return memory
+        return agent, memory
 
-    def run(self, prompt: str, verbose: bool = False) -> Any:
+    def run(self, prompt: str, verbose: bool = False, thread_id: Optional[str] = None) -> List[BaseMessage]:
         """
         Run the agent with the given prompt and stream results.
+        
         Args:
             prompt: Input text to process
             verbose: Whether to print detailed message sequence
+            thread_id: Optional thread ID for conversation tracking. 
+                If not provided, uses default.
         Returns:
             List of response messages
         """
-        # Include memory in the input
-        input_with_memory = {
-            "messages": [("human", prompt)],
-            "chat_history": self.memory.chat_memory.messages if self.memory else []
-        }
+        # Use provided thread_id or default
+        current_thread_id = thread_id or self.thread_id
+        config = {"configurable": {"thread_id": current_thread_id}}
+        
+        input_message = HumanMessage(content=prompt)
         
         # Inference
-        stream = self.agent.stream(input_with_memory)
+        stream = self.agent.stream(
+            {"messages": [input_message]}, 
+            config, 
+            stream_mode="values"
+        )
+
         messages = []
-
-        for response in stream:
-            if "agent" not in response:
-                continue
-            if "messages" not in response['agent']:
-                continue
-            last_msg = response["agent"]["messages"][-1]
-            messages.append(last_msg)
-            if verbose:
-                self._print_message("Streamed Message", last_msg)
-
-        # Memorize the interaction
-        if messages:
-            self._update_memory_brief(prompt, messages)
+        for event in stream:
+            if "messages" in event:
+                last_msg = event["messages"][-1]
+                messages.append(last_msg)
+                if verbose:
+                    self._print_message("Streamed Message", last_msg)
+        
         return messages
 
     def _print_message(self, header: str, msg: Any) -> None:
@@ -118,24 +111,31 @@ class DataAgent:
         if hasattr(msg, 'tool_calls') and msg.tool_calls:
             print(f"Tool calls: {msg.tool_calls}")
 
-    def _plot_message_sequence(self, response: Any) -> None:
-        """Plot the full sequence of messages in a response."""
-        print("\nMessage sequence:")
-        for i, msg in enumerate(response["messages"]):
-            self._print_message(f"Message {i+1}", msg)
+    def get_chat_history(self, thread_id: Optional[str] = None) -> List[BaseMessage]:
+        """
+        Get conversation history for a thread.
+        
+        Args:
+            thread_id: Optional thread ID (uses default if not provided)
+        Returns:
+            List of messages in the conversation
+        """
+        current_thread_id = thread_id or self.thread_id
+        config = {"configurable": {"thread_id": current_thread_id}}
+        
+        # Get the current state to access history
+        state = self.agent.get_state(config)
+        return state.values.get("messages", []) if state else []
 
-    def _update_memory(self, messages: Any, only_answer: bool = True) -> None:
-        """Update the conversation memory with new messages."""
-        if self.memory is not None:
-            for msg in messages:
-                self.memory.chat_memory.add_message(msg)
+    def clear_memory(self, thread_id: Optional[str] = None) -> None:
+        """
+        Clear conversation memory for a thread.
 
-    def _update_memory_brief(self, question: str, messages: Any) -> None:
-        """Update the conversation memory only with the question and its answer."""
-        if self.memory is not None:
-            # Add the question to memory
-            self.memory.chat_memory.add_user_message(question)
-            # Add the last AI message to memory
-            last_message_content = next((msg.content for msg in reversed(messages) if hasattr(msg, 'content')), None)
-            if last_message_content:
-                self.memory.chat_memory.add_ai_message(last_message_content)
+        Args:
+            thread_id: Optional thread ID (uses default if not provided)
+        """
+        current_thread_id = thread_id or self.thread_id
+        config = {"configurable": {"thread_id": current_thread_id}}
+        
+        # Clear state by setting empty messages
+        self.agent.update_state(config, {"messages": []})
