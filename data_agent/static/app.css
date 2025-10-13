@@ -44,6 +44,15 @@ button{background:var(--panel);border:0;color:#fff;padding:10px 14px;border-radi
 .msg{background:transparent;padding:4px 0;border-radius:0;margin-bottom:8px;border:0}
 .msg .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
 
+.tool-box{padding:8px 0}
+.tool-row{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:6px;color:var(--muted);font-size:13px}
+.tool-row .tool-left{font-weight:600;color:var(--muted);font-size:12px}
+.tool-row .tool-right{font-size:13px;color:var(--muted)}
+.tool-file-link{color:var(--muted);text-decoration:none}
+.tool-file-link:hover{color:#fff;text-decoration:underline}
+
+.fs-selected{background:linear-gradient(90deg, rgba(143,107,214,0.12), rgba(255,255,255,0.01));color:#fff}
+
 .chat-tools{display:flex;gap:12px;margin-top:14px}
 
 .visual-card{background:linear-gradient(90deg, rgba(143,107,214,0.08), rgba(255,255,255,0.02));border-radius:8px;padding:10px;margin-bottom:8px;border:1px solid rgba(143,107,214,0.08)}

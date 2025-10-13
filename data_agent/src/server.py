@@ -1,4 +1,5 @@
 import json
+import ast
 import os
 import traceback
 import logging
@@ -29,6 +30,42 @@ def log_msg(msg: str):
             f.write(line)
     except Exception:
         pass
+
+
+def _extract_tool_signatures(calls):
+    """Return a set of string signatures extracted from a list of tool call dicts.
+
+    Useful to heuristically detect textual echoes of tool outputs (filenames, query strings).
+    """
+    sigs = set()
+    if not calls:
+        return sigs
+    def walk(val):
+        if val is None:
+            return
+        if isinstance(val, str):
+            if val:
+                sigs.add(val)
+        elif isinstance(val, (list, tuple, set)):
+            for v in val:
+                walk(v)
+        elif isinstance(val, dict):
+            for v in val.values():
+                walk(v)
+        else:
+            try:
+                s = str(val)
+                if s:
+                    sigs.add(s)
+            except Exception:
+                pass
+    for c in calls:
+        args = c.get('args') if isinstance(c, dict) else None
+        walk(args)
+        # also include name
+        if isinstance(c, dict) and 'name' in c:
+            sigs.add(str(c.get('name')))
+    return sigs
 
 # Try to import and initialize DataAgent lazily to avoid hard dependency failures
 AGENT_INSTANCE = None
@@ -194,6 +231,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 q = payload.get('text', '')
                 # track whether we've sent the first piece for this query
                 first_piece = True
+                # collect discovered tool signatures for this query to avoid echoing tool outputs
+                discovered_tool_sigs = set()
                 # If agent wasn't initialized at connect time, try again now (in case .env or config changed)
                 if agent is None:
                     agent = init_data_agent()
@@ -220,6 +259,25 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 # event may contain 'messages' with partial content
                                 if 'messages' in event:
                                         last = event['messages'][-1]
+                                        # If the message has a tool_calls attribute (langgraph may attach tool calls here), emit them
+                                        try:
+                                            tc = getattr(last, 'tool_calls', None) if hasattr(last, 'tool_calls') or hasattr(last, 'tool_calls') else None
+                                        except Exception:
+                                            tc = None
+                                        # also handle dict-like messages
+                                        if tc is None and isinstance(last, dict):
+                                            tc = last.get('tool_calls')
+                                        if tc:
+                                            try:
+                                                await manager.send_json(client_id, {"type": "tool_calls", "payload": tc})
+                                                # record signatures so subsequent text that echoes these can be suppressed
+                                                try:
+                                                    discovered_tool_sigs.update(_extract_tool_signatures(tc))
+                                                except Exception:
+                                                    pass
+                                                continue
+                                            except Exception:
+                                                pass
                                         # Determine content and role/class to avoid echoing user's own message
                                         content = getattr(last, 'content', None) if hasattr(last, 'content') else (last.get('content') if isinstance(last, dict) else None)
                                         role = getattr(last, 'role', None) if hasattr(last, 'role') else (last.get('role') if isinstance(last, dict) else None)
@@ -229,18 +287,48 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                             continue
                                         if content is not None:
                                             # If this content is a visualization payload, send it as a visualize_result and skip raw text
-                                            try:
-                                                parsed = json.loads(content)
+                                            parsed = None
+                                            # If content is already a Python list/dict, use it directly
+                                            if isinstance(content, (list, dict)):
+                                                parsed = content
+                                            else:
+                                                try:
+                                                    parsed = json.loads(content)
+                                                except Exception:
+                                                    try:
+                                                        # handle Python-style repr like "[{'name': 'read_file', ...}]"
+                                                        parsed = ast.literal_eval(content)
+                                                    except Exception:
+                                                        parsed = None
+
+                                            if parsed is not None:
+                                                # Tool calls: list of objects with 'name' key -> emit explicit tool_calls event
+                                                if isinstance(parsed, list) and parsed and isinstance(parsed[0], dict) and 'name' in parsed[0]:
+                                                    await manager.send_json(client_id, {"type": "tool_calls", "payload": parsed})
+                                                    try:
+                                                        discovered_tool_sigs.update(_extract_tool_signatures(parsed))
+                                                    except Exception:
+                                                        pass
+                                                    continue
                                                 if isinstance(parsed, dict) and '__visualize__' in parsed:
                                                     items = parsed['__visualize__']
                                                     await manager.send_json(client_id, {"type": "visualize_result", "payload": items})
                                                     # do not send the raw JSON as agent text
                                                     continue
-                                            except Exception:
-                                                # not JSON/visualize payload, proceed
-                                                pass
 
                                             # Prefix subsequent pieces with a newline
+                                            # Heuristic: if content is short and appears to be an echo of known tool sigs, skip it
+                                            lowered = content.lower() if isinstance(content, str) else ''
+                                            skip_echo = False
+                                            for s in discovered_tool_sigs:
+                                                if not s: continue
+                                                if len(s) < 3: continue
+                                                if s.lower() in lowered or lowered in s.lower():
+                                                    skip_echo = True
+                                                    break
+                                            if skip_echo:
+                                                continue
+
                                             send_text = content if first_piece else ("\n" + content)
                                             first_piece = False
                                             # Send partial content
@@ -256,6 +344,26 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             messages = agent.run(q, thread_id=client_id, verbose=True)
                             results = []
                             for m in messages:
+                                # Check for tool_calls attached to the message object first
+                                tc = None
+                                try:
+                                    tc = getattr(m, 'tool_calls', None) if hasattr(m, 'tool_calls') or hasattr(m, 'tool_calls') else None
+                                except Exception:
+                                    tc = None
+                                if tc is None and isinstance(m, dict):
+                                    tc = m.get('tool_calls')
+                                if tc:
+                                    try:
+                                        log_msg(f"OUTGOING [{client_id}]: tool_calls payload detected (non-stream)")
+                                        await manager.send_json(client_id, {"type": "tool_calls", "payload": tc})
+                                        try:
+                                            discovered_tool_sigs.update(_extract_tool_signatures(tc))
+                                        except Exception:
+                                            pass
+                                        continue
+                                    except Exception:
+                                        pass
+
                                 content = getattr(m, 'content', None) if hasattr(m, 'content') else (m.get('content') if isinstance(m, dict) else None)
                                 role = getattr(m, 'role', None) if hasattr(m, 'role') else (m.get('role') if isinstance(m, dict) else None)
                                 cls_name = m.__class__.__name__ if hasattr(m, '__class__') else None
@@ -263,22 +371,52 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 if role in ('user', 'human') or cls_name == 'HumanMessage' or (content is not None and content == q):
                                     continue
                                 if content is not None:
-                                    # If this content is a visualization payload, send it separately and do not include it in the text results
-                                    try:
-                                        parsed = json.loads(content)
-                                        if isinstance(parsed, dict) and '__visualize__' in parsed:
-                                            items = parsed['__visualize__']
-                                            vizmsg = {"type": "visualize_result", "payload": items}
-                                            log_msg(f"OUTGOING [{client_id}]: {json.dumps(vizmsg)}")
-                                            await manager.send_json(client_id, vizmsg)
-                                            continue
-                                    except Exception:
-                                        pass
+                                        # If this content is a tool-calls array (JSON), emit tool_calls and skip text
+                                        parsed = None
+                                        if isinstance(content, (list, dict)):
+                                            parsed = content
+                                        else:
+                                            try:
+                                                parsed = json.loads(content)
+                                            except Exception:
+                                                try:
+                                                    parsed = ast.literal_eval(content)
+                                                except Exception:
+                                                    parsed = None
 
-                                    # prefix subsequent final pieces with newline
-                                    send_text = content if first_piece else ("\n" + content)
-                                    first_piece = False
-                                    results.append({'content': send_text})
+                                        if parsed is not None:
+                                            if isinstance(parsed, list) and parsed and isinstance(parsed[0], dict) and 'name' in parsed[0]:
+                                                log_msg(f"OUTGOING [{client_id}]: tool_calls payload detected")
+                                                await manager.send_json(client_id, {"type": "tool_calls", "payload": parsed})
+                                                try:
+                                                    discovered_tool_sigs.update(_extract_tool_signatures(parsed))
+                                                except Exception:
+                                                    pass
+                                                continue
+                                            # Visualization payloads are sent as visualize_result
+                                            if isinstance(parsed, dict) and '__visualize__' in parsed:
+                                                items = parsed['__visualize__']
+                                                vizmsg = {"type": "visualize_result", "payload": items}
+                                                log_msg(f"OUTGOING [{client_id}]: {json.dumps(vizmsg)}")
+                                                await manager.send_json(client_id, vizmsg)
+                                                continue
+
+                                        # Heuristic suppression of echoed tool outputs for final pieces
+                                        lowered = content.lower() if isinstance(content, str) else ''
+                                        skip_echo = False
+                                        for s in discovered_tool_sigs:
+                                            if not s: continue
+                                            if len(s) < 3: continue
+                                            if s.lower() in lowered or lowered in s.lower():
+                                                skip_echo = True
+                                                break
+                                        if skip_echo:
+                                            continue
+
+                                        # prefix subsequent final pieces with newline
+                                        send_text = content if first_piece else ("\n" + content)
+                                        first_piece = False
+                                        results.append({'content': send_text})
                             outmsg = {"type": "agent_result", "payload": results}
                             log_msg(f"OUTGOING [{client_id}]: {json.dumps(outmsg)}")
                             await manager.send_json(client_id, outmsg)
@@ -294,3 +432,42 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
     except WebSocketDisconnect:
         manager.disconnect(client_id)
+
+
+@app.post('/api/emit_tool_calls')
+async def emit_tool_calls(request: Request):
+    """Emit a sample tool_calls payload to a connected client or return it in the response.
+
+    Sends to 'client_id' query param if provided, otherwise broadcasts to all connected clients.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    client_id = body.get('client_id') or request.query_params.get('client_id')
+
+    sample = [
+        {'name': 'read_file', 'args': {'file_path': 'data_agent/src/data_agent.py'}, 'id': 'call_test_1', 'type': 'tool_call'},
+        {'name': 'list_directory', 'args': {'path': '.'}, 'id': 'call_test_2', 'type': 'tool_call'}
+    ]
+
+    payload = {"type": "tool_calls", "payload": sample}
+    log_msg(f"EMIT_TOOL_CALLS requested for client={client_id}; broadcasting payload")
+
+    sent = 0
+    if client_id:
+        try:
+            await manager.send_json(client_id, payload)
+            sent = 1
+        except Exception:
+            sent = 0
+    else:
+        # broadcast
+        for cid, ws in list(manager.active_connections.items()):
+            try:
+                await manager.send_json(cid, payload)
+                sent += 1
+            except Exception:
+                pass
+
+    return {"sent": sent, "payload": sample}
