@@ -12,11 +12,25 @@ body{
   font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   background: linear-gradient(180deg,#241f2b 0%, #2a2830 100%);
   color:#eee;
+  background-repeat: no-repeat;
+  background-color: #2a2830;
 }
 .container{display:flex;height:100vh}
 .sidebar{width:280px;background:rgba(20,18,23,0.6);padding:18px;border-right:1px solid rgba(255,255,255,0.03)}
 .fs-header{font-weight:700;margin-bottom:12px}
-.fs-tree{overflow:auto;height:calc(100vh - 80px);padding-right:8px}
+.sidebar{position:fixed;left:0;top:0;bottom:0;z-index:2}
+.fs-tree{overflow:auto;height:calc(100vh - 80px);padding:18px 8px 40px 8px}
+.main{margin-left:320px}
+.fs-header{font-weight:700;margin-bottom:12px}
+.fs-item{display:flex;flex-direction:row;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;color:var(--muted);font-size:13px;white-space:nowrap}
+.fs-item:hover{background:rgba(255,255,255,0.02);color:#fff}
+.fs-item > .caret,.fs-item > .icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;line-height:1}
+.fs-children{margin-left:18px}
+.fs-item{cursor:pointer}
+.fs-item > .caret{width:16px;color:var(--muted);font-size:12px}
+.fs-item > .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-children .fs-item{padding:4px 8px}
+.fs-item[aria-expanded="true"] > .caret{transform:rotate(90deg);color:#fff}
 .fs-tree .item{padding:6px 8px;border-radius:6px;color:var(--muted);font-size:13px}
 .fs-tree .item:hover{background:rgba(255,255,255,0.02);color:#fff}
 
@@ -26,9 +40,9 @@ body{
 .query{flex:1;padding:14px;border-radius:10px;border:0;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));color:#fff}
 button{background:var(--panel);border:0;color:#fff;padding:10px 14px;border-radius:10px}
 
-.messages{min-height:360px;background:linear-gradient(180deg,#2f2b33,#2b2630);padding:18px;border-radius:12px}
-.msg{background:var(--card);padding:12px;border-radius:10px;margin-bottom:12px}
-.msg .meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+.messages{min-height:360px;background:transparent;padding:18px;border-radius:12px}
+.msg{background:transparent;padding:4px 0;border-radius:0;margin-bottom:8px;border:0}
+.msg .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
 
 .chat-tools{display:flex;gap:12px;margin-top:14px}
 

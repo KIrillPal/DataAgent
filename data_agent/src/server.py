@@ -192,6 +192,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 await manager.send_json(client_id, {"type": "visualize_result", "payload": cards})
             elif t == 'query':
                 q = payload.get('text', '')
+                # track whether we've sent the first piece for this query
+                first_piece = True
                 # If agent wasn't initialized at connect time, try again now (in case .env or config changed)
                 if agent is None:
                     agent = init_data_agent()
@@ -217,42 +219,66 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             for event in stream:
                                 # event may contain 'messages' with partial content
                                 if 'messages' in event:
-                                    last = event['messages'][-1]
-                                    if hasattr(last, 'content'):
-                                        # Send partial content
-                                        out = {"type": "agent_stream", "payload": {'content': last.content}}
-                                        log_msg(f"OUTGOING [{client_id}]: {json.dumps(out)}")
-                                        await manager.send_json(client_id, out)
-                                        # Check if content contains a visualization payload
-                                        try:
-                                            parsed = json.loads(last.content)
-                                            if isinstance(parsed, dict) and '__visualize__' in parsed:
-                                                items = parsed['__visualize__']
-                                                await manager.send_json(client_id, {"type": "visualize_result", "payload": items})
-                                        except Exception:
-                                            pass
+                                        last = event['messages'][-1]
+                                        # Determine content and role/class to avoid echoing user's own message
+                                        content = getattr(last, 'content', None) if hasattr(last, 'content') else (last.get('content') if isinstance(last, dict) else None)
+                                        role = getattr(last, 'role', None) if hasattr(last, 'role') else (last.get('role') if isinstance(last, dict) else None)
+                                        cls_name = last.__class__.__name__ if hasattr(last, '__class__') else None
+                                        # Skip forwarding messages that are the original user input
+                                        if role in ('user', 'human') or cls_name == 'HumanMessage' or (content is not None and content == q):
+                                            continue
+                                        if content is not None:
+                                            # If this content is a visualization payload, send it as a visualize_result and skip raw text
+                                            try:
+                                                parsed = json.loads(content)
+                                                if isinstance(parsed, dict) and '__visualize__' in parsed:
+                                                    items = parsed['__visualize__']
+                                                    await manager.send_json(client_id, {"type": "visualize_result", "payload": items})
+                                                    # do not send the raw JSON as agent text
+                                                    continue
+                                            except Exception:
+                                                # not JSON/visualize payload, proceed
+                                                pass
+
+                                            # Prefix subsequent pieces with a newline
+                                            send_text = content if first_piece else ("\n" + content)
+                                            first_piece = False
+                                            # Send partial content
+                                            out = {"type": "agent_stream", "payload": {'content': send_text}}
+                                            log_msg(f"OUTGOING [{client_id}]: {json.dumps(out)}")
+                                            await manager.send_json(client_id, out)
                             # After stream ends, send end marker
                             endmsg = {"type": "agent_stream_end", "payload": {}}
                             log_msg(f"OUTGOING [{client_id}]: {json.dumps(endmsg)}")
                             await manager.send_json(client_id, endmsg)
                         else:
                             # fallback to non-streaming run() — pass thread_id so checkpointer works
-                            messages = agent.run(q, thread_id=client_id)
+                            messages = agent.run(q, thread_id=client_id, verbose=True)
                             results = []
                             for m in messages:
-                                if hasattr(m, 'content'):
-                                    results.append({'content': m.content})
-                                    # detect visualization payloads in final content
+                                content = getattr(m, 'content', None) if hasattr(m, 'content') else (m.get('content') if isinstance(m, dict) else None)
+                                role = getattr(m, 'role', None) if hasattr(m, 'role') else (m.get('role') if isinstance(m, dict) else None)
+                                cls_name = m.__class__.__name__ if hasattr(m, '__class__') else None
+                                # skip original user messages that may appear in the conversation history
+                                if role in ('user', 'human') or cls_name == 'HumanMessage' or (content is not None and content == q):
+                                    continue
+                                if content is not None:
+                                    # If this content is a visualization payload, send it separately and do not include it in the text results
                                     try:
-                                        parsed = json.loads(m.content)
+                                        parsed = json.loads(content)
                                         if isinstance(parsed, dict) and '__visualize__' in parsed:
                                             items = parsed['__visualize__']
-                                            # send visualization as a separate message
                                             vizmsg = {"type": "visualize_result", "payload": items}
                                             log_msg(f"OUTGOING [{client_id}]: {json.dumps(vizmsg)}")
                                             await manager.send_json(client_id, vizmsg)
+                                            continue
                                     except Exception:
                                         pass
+
+                                    # prefix subsequent final pieces with newline
+                                    send_text = content if first_piece else ("\n" + content)
+                                    first_piece = False
+                                    results.append({'content': send_text})
                             outmsg = {"type": "agent_result", "payload": results}
                             log_msg(f"OUTGOING [{client_id}]: {json.dumps(outmsg)}")
                             await manager.send_json(client_id, outmsg)

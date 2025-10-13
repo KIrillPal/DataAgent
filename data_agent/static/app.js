@@ -3,6 +3,10 @@ const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${l
 
 ws.addEventListener('open', ()=>{
   console.log('ws open')
+  // fetch root filesystem listing on connect
+  fetch('/api/list_dir?path=.').then(r=>r.json()).then(d=>{
+    if(d.items) renderFsRoot(d.items);
+  }).catch(e=>console.error('fs load err',e));
 });
 
 ws.addEventListener('message', ev => {
@@ -31,7 +35,8 @@ function handleWs(msg){
       document.getElementById('messages').appendChild(partial);
     }
     const c = partial.querySelector('.stream-content');
-    c.textContent = (c.textContent || '') + (msg.payload.content || '');
+    const incoming = msg.payload.content || '';
+    c.innerHTML = (c.innerHTML || '') + escapeHtml(incoming).replace(/\n/g, '<br>');
   } else if(t === 'agent_stream_end'){
     // finalize streaming message
     const partial = document.getElementById('streaming-partial');
@@ -47,29 +52,88 @@ function handleWs(msg){
 function appendMessage(role, text){
   const el = document.createElement('div');
   el.className = 'msg';
-  el.innerHTML = `<div class='meta'>${role}</div><div>${text}</div>`;
+  el.innerHTML = `<div class='meta'>${role}</div><div>${escapeHtml(text).replace(/\n/g,'<br>')}</div>`;
   document.getElementById('messages').appendChild(el);
   window.scrollTo(0, document.body.scrollHeight);
 }
 
+function escapeHtml(unsafe) {
+  if (unsafe === null || unsafe === undefined) return '';
+  return String(unsafe)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 function renderList(items){
   const tree = document.getElementById('fs-tree');
   tree.innerHTML = '';
   items.forEach(it => {
     const el = document.createElement('div');
-    el.className = 'item';
-    el.textContent = it.name;
+    el.className = 'fs-item';
+  const caret = document.createElement('div'); caret.className='caret'; caret.textContent = it.is_dir ? '▶' : '';
+  const icon = document.createElement('div'); icon.className='icon'; icon.textContent = it.is_dir ? '📁' : '📄';
+  const name = document.createElement('div'); name.className='name'; name.textContent = it.name;
+  el.appendChild(caret); el.appendChild(icon); el.appendChild(name);
     el.onclick = ()=>{
-      // request listing of this folder
       if(it.is_dir){
-        ws.send(JSON.stringify({type:'list', payload:{path:it.path}}));
-        appendMessage('user', `List ${it.path}`);
+        // toggle children visibility
+        toggleFolder(it.path, el);
       } else {
         appendMessage('user', `Selected ${it.path}`);
       }
     }
     tree.appendChild(el);
   })
+}
+
+function renderFsRoot(items){
+  const tree = document.getElementById('fs-tree');
+  tree.innerHTML = '';
+  items.forEach(it=>{
+    const el = document.createElement('div');
+    el.className = 'fs-item';
+    const caret = document.createElement('div'); caret.className='caret'; caret.textContent = it.is_dir ? '▶' : '';
+    const icon = document.createElement('div'); icon.className='icon'; icon.textContent = it.is_dir ? '📁' : '📄';
+    const name = document.createElement('div'); name.className='name'; name.textContent = it.name;
+    el.appendChild(caret); el.appendChild(icon); el.appendChild(name);
+    el.dataset.path = it.path;
+    if(it.is_dir) el.setAttribute('aria-expanded','false');
+    el.onclick = ()=>{ if(it.is_dir) toggleFolder(it.path, el); else appendMessage('user', `Selected ${it.path}`)};
+    tree.appendChild(el);
+  })
+}
+
+function toggleFolder(path, el){
+  // if already expanded, collapse
+  const existing = el.nextElementSibling;
+  if(existing && existing.classList && existing.classList.contains('fs-children')){
+    existing.remove();
+    // collapse marker
+    el.setAttribute('aria-expanded','false');
+    const caretEl = el.querySelector('.caret'); if(caretEl) caretEl.textContent = '▶';
+    return;
+  }
+  // otherwise fetch children
+  fetch(`/api/list_dir?path=${encodeURIComponent(path)}`).then(r=>r.json()).then(d=>{
+    const wrap = document.createElement('div'); wrap.className='fs-children';
+    (d.items||[]).forEach(it=>{
+      const row = document.createElement('div'); row.className='fs-item';
+      const caret = document.createElement('div'); caret.className='caret'; caret.textContent = it.is_dir ? '▶' : '';
+      const icon = document.createElement('div'); icon.className='icon'; icon.textContent = it.is_dir ? '📁' : '📄';
+      const name = document.createElement('div'); name.className='name'; name.textContent = it.name;
+      row.appendChild(caret); row.appendChild(icon); row.appendChild(name);
+      row.dataset.path = it.path;
+      if(it.is_dir) row.setAttribute('aria-expanded','false');
+      row.onclick = ()=>{ if(it.is_dir) toggleFolder(it.path, row); else appendMessage('user', `Selected ${it.path}`) };
+      wrap.appendChild(row);
+    })
+    el.parentNode.insertBefore(wrap, el.nextSibling);
+    // mark expanded state on the parent element and update caret
+    el.setAttribute('aria-expanded','true');
+    const caretEl = el.querySelector('.caret'); if(caretEl) caretEl.textContent = '▼';
+  }).catch(e=>console.error('list err',e));
 }
 
 function renderVisualCards(cards){
@@ -98,15 +162,7 @@ function renderVisualCards(cards){
   messages.appendChild(box);
 }
 
-document.getElementById('btn-list').addEventListener('click', ()=>{
-  ws.send(JSON.stringify({type:'list', payload:{path:'./'}}));
-  appendMessage('user','Analyze @data folder. How many images are there?');
-});
-
-document.getElementById('btn-describe').addEventListener('click', ()=>{
-  appendMessage('user','Describe the other dataset types');
-  ws.send(JSON.stringify({type:'query', payload:{text:'Describe the other dataset types'}}));
-});
+// chat-tool buttons removed from UI; no handlers necessary
 
 document.getElementById('send').addEventListener('click', ()=>{
   const q = document.getElementById('query').value;
