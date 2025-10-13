@@ -1,4 +1,5 @@
-from typing import Any, Dict, Optional, List
+import sys
+from typing import Any, Dict, Optional, List, TextIO
 import os
 import uuid
 from langgraph.checkpoint.memory import MemorySaver
@@ -82,34 +83,36 @@ class DataAgent:
         config = {"configurable": {"thread_id": current_thread_id}}
         
         input_message = HumanMessage(content=prompt)
-        
-        # Inference
-        stream = self.agent.stream(
-            {"messages": [input_message]}, 
-            config, 
-            stream_mode="values"
-        )
 
-        messages = []
-        for event in stream:
-            if "messages" in event:
-                last_msg = event["messages"][-1]
-                messages.append(last_msg)
-                if verbose:
-                    self._print_message("Streamed Message", last_msg)
+        with open(f"/home/kir/mipt/DataAgent/outputs/{current_thread_id}.txt", "w") as f:
+            print("Inference started...", flush=True, file=f)
+            # Inference
+            stream = self.agent.stream(
+                {"messages": [input_message]},
+                config,
+                stream_mode="values"
+            )
+
+            messages = []
+            for event in stream:
+                if "messages" in event:
+                    last_msg = event["messages"][-1]
+                    messages.append(last_msg)
+                    if verbose:
+                        self._print_message("Streamed Message", last_msg, file=f)
         
         return messages
 
-    def _print_message(self, header: str, msg: Any) -> None:
+    def _print_message(self, header: str, msg: Any, file: TextIO = sys.stdout) -> None:
         """Print a single message with its details."""
-        print(f"\n--- {header} ---")
-        print(f"Type: {type(msg).__name__}")
-        
+        print(f"\n--- {header} ---", flush=True, file=file)
+        print(f"Type: {type(msg).__name__}", flush=True, file=file)
+
         if hasattr(msg, 'content'):
-            print(f"Content: {msg.content}")
-        
+            print(f"Content: {msg.content}", flush=True, file=file)
+
         if hasattr(msg, 'tool_calls') and msg.tool_calls:
-            print(f"Tool calls: {msg.tool_calls}")
+            print(f"Tool calls: {msg.tool_calls}", flush=True, file=file)
 
     def get_chat_history(self, thread_id: Optional[str] = None) -> List[BaseMessage]:
         """
