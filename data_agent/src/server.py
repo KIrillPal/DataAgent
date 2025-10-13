@@ -249,6 +249,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     # Prefer streaming API if available
                     try:
                         messages = agent.run(q, thread_id=client_id, verbose=True)
+                        results = []
                         for m in messages:
                             # Check for tool_calls attached to the message object first
                             tc = getattr(m, 'tool_calls', None) if hasattr(m, 'tool_calls') or hasattr(m, 'tool_calls') else None
@@ -266,10 +267,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 # prefix subsequent final pieces with newline
                                 send_text = content if first_piece else ("\n" + content)
                                 first_piece = False
-                                outmsg = {"type": "agent_result", "payload": send_text}
-                                log_msg(f"OUTGOING [{client_id}]: {json.dumps(outmsg)}")
-                                await manager.send_json(client_id, outmsg)
-                        await manager.send_json(client_id, {"type": "agent_done", "payload": {}})
+                                results.append({'content': send_text})
+                        
+                        # Output the answer
+                        outmsg = {"type": "agent_result", "payload": results}
+                        log_msg(f"OUTGOING [{client_id}]: {json.dumps(outmsg)}")
+                        await manager.send_json(client_id, outmsg)
+                    
                     except Exception as e:
                         err = {"type": "agent_error", "payload": {"error": str(e)}}
                         log_msg(f"OUTGOING [{client_id}]: {json.dumps(err)}")

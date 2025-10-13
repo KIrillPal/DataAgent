@@ -145,7 +145,6 @@ function renderFsRoot(items){
     el.appendChild(caret); el.appendChild(icon); el.appendChild(name);
     el.dataset.path = it.path;
     if(it.is_dir) el.setAttribute('aria-expanded','false');
-    el.onclick = ()=>{ if(it.is_dir) toggleFolder(it.path, el); else appendMessage('user', `Selected ${it.path}`)};
     tree.appendChild(el);
   })
 }
@@ -195,6 +194,18 @@ async function ensurePathVisible(path){
     let el = document.querySelector(`[data-path="${path}"]`);
     if(el){ highlightPath(el); return el; }
 
+    // Fallback: try to match by basename or suffix if direct match failed
+    try{
+      const all = Array.from(document.querySelectorAll('[data-path]'));
+      const bySuffix = all.find(n=>{ const v = n.getAttribute('data-path'); return v === path || v.endsWith(path) || path.endsWith(v) || v.endsWith('/'+path); });
+      if(bySuffix){ highlightPath(bySuffix); return bySuffix; }
+      const basename = path.split('/').filter(Boolean).pop();
+      if(basename){
+        const byBase = all.find(n=>{ const v = n.getAttribute('data-path'); return v === basename || v.endsWith('/'+basename) || v.indexOf(basename) !== -1; });
+        if(byBase){ highlightPath(byBase); return byBase; }
+      }
+    }catch(e){ /* ignore */ }
+
     // Walk up until we find an ancestor element present in DOM
     const parts = path.split('/');
     for(let i = parts.length-1; i>0; i--){
@@ -217,9 +228,13 @@ function highlightPath(elOrPath){
   document.querySelectorAll('.fs-selected').forEach(n=>n.classList.remove('fs-selected'));
   let el = typeof elOrPath === 'string' ? document.querySelector(`[data-path="${elOrPath}"]`) : elOrPath;
   if(!el) return;
+  // add class then schedule removal after 1s so animation fades out
   el.classList.add('fs-selected');
-  // scroll into view
   try{ el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+  try{ 
+    if(el._fsTimeout) clearTimeout(el._fsTimeout);
+    el._fsTimeout = setTimeout(()=>{ el.classList.remove('fs-selected'); el._fsTimeout = null; }, 1000);
+  }catch(e){}
 }
 
 function renderVisualCards(cards){
@@ -261,22 +276,71 @@ function renderToolCalls(calls){
     const row = document.createElement('div'); row.className = 'tool-row';
     const left = document.createElement('div'); left.className = 'tool-left'; left.textContent = call.name;
     const right = document.createElement('div'); right.className = 'tool-right';
-    // Pretty-format based on known tool names
-    if(call.name === 'read_file' && call.args && call.args.file_path){
-      const fp = call.args.file_path;
-      const a = document.createElement('a'); a.href='#'; a.textContent = `Opened ${fp.split('/').pop()}`; a.className='tool-file-link';
-      a.onclick = (e)=>{ e.preventDefault(); ensurePathVisible(fp); appendMessage('agent', `Opened ${fp}`); };
+    // Human-friendly formatting for common tools and a clickable path when applicable
+    if(call.name === 'read_file' && call.args && (call.args.file_path || call.args.path)){
+      const fp = call.args.file_path || call.args.path;
+      const a = document.createElement('a'); a.href='#';
+      // show only the last two path segments for compactness, but keep full path in title
+      const parts = fp.split('/').filter(Boolean);
+      const label = parts.slice(-2).join('/') || fp;
+      a.textContent = `Opened ${label}`;
+      a.title = fp;
+      a.className='tool-file-link';
+      // robust click: try several path variants to find and expand/highlight the item
+      a.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        const variants = [fp, `./${fp}`, fp.replace(/^\.\//,''), `/${fp}`, parts.slice(-1).join('/')];
+        console.debug('[tool-link] trying variants for', fp, variants);
+        for(const v of variants){
+          try{
+            const el = await ensurePathVisible(v);
+            console.debug('[tool-link] variant', v, '->', !!el);
+            if(el){ highlightPath(el); return; }
+          }catch(err){ console.debug('[tool-link] ensurePathVisible error', err); }
+        }
+        // fallback: attempt a direct query and highlight if found
+        const direct = document.querySelector(`[data-path="${fp}"]`) || document.querySelector(`[data-path="./${fp}"]`);
+        console.debug('[tool-link] fallback direct', !!direct);
+        if(direct) highlightPath(direct);
+      });
       right.appendChild(a);
-    } else if(call.name === 'list_directory' && call.args && call.args.path){
-      const p = call.args.path;
-      const span = document.createElement('span'); span.textContent = `Listed ${p}`;
-      right.appendChild(span);
+    } else if(call.name === 'list_directory' && call.args && (call.args.path || call.args.dir_path)){
+      const p = call.args.path || call.args.dir_path;
+      const a = document.createElement('a'); a.href='#';
+      a.className='tool-file-link';
+      const parts = p.split('/').filter(Boolean);
+      const label = parts.length ? parts.join('/') : '.';
+      a.textContent = `Listed ${label}`;
+      a.title = p;
+      a.addEventListener('click', async (e)=>{ 
+        e.preventDefault();
+        const variants = [p, `./${p}`, p.replace(/^\.\//,''), `/${p}`];
+        console.debug('[tool-link:list] trying variants for', p, variants);
+        for(const v of variants){ try{ const el = await ensurePathVisible(v); console.debug('[tool-link:list] variant', v, '->', !!el); if(el) return; }catch(err){ console.debug('[tool-link:list] ensurePathVisible error', err); } }
+        const direct = document.querySelector(`[data-path="${p}"]`) || document.querySelector(`[data-path="./${p}"]`);
+        console.debug('[tool-link:list] fallback direct', !!direct);
+        if(direct) highlightPath(direct);
+      });
+      right.appendChild(a);
     } else if(call.name === 'file_search' && call.args && call.args.query){
       const s = call.args.query;
-      const span = document.createElement('span'); span.textContent = `Searched ${s}`;
+      const span = document.createElement('span'); span.textContent = `Searched: ${s}`;
+      span.title = s;
       right.appendChild(span);
     } else {
-      const span = document.createElement('span'); span.textContent = JSON.stringify(call.args || {});
+      // fallback: present a brief human summary from args rather than raw JSON
+      const argsSummary = [];
+      try{
+        if(call.args){
+          for(const k of Object.keys(call.args)){
+            const v = call.args[k];
+            if(typeof v === 'string' && (v.includes('/') || v.length < 40)) argsSummary.push(`${k}: ${v}`);
+            else if(typeof v === 'string') argsSummary.push(`${k}: ${v.slice(0,40)}${v.length>40? '…':''}`);
+            else argsSummary.push(`${k}: ${String(v)}`);
+          }
+        }
+      }catch(e){ /* ignore */ }
+      const span = document.createElement('span'); span.textContent = argsSummary.length ? argsSummary.join(', ') : JSON.stringify(call.args || {});
       right.appendChild(span);
     }
 

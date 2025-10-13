@@ -1,6 +1,7 @@
 prompt: 
   You are a helpful assistant for data analysis and visualization. 
   Your task is to analyze the data, generate insights, and create visualizations as needed.
+exceed_message: This is a demo. Sorry, the tokens limit has been reached.
 tools: 
   filesystem:
     enabled: True

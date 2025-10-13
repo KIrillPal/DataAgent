@@ -100,7 +100,9 @@ class DataAgent:
                     messages.append(last_msg)
                     if verbose:
                         self._print_message("Streamed Message", last_msg, file=f)
-        
+        # Check last message content and handle empty case
+        if messages and not messages[-1].content:
+            messages[-1].content = self.config['agent'].get('exceed_message', '')
         return messages
 
     def _print_message(self, header: str, msg: Any, file: TextIO = sys.stdout) -> None:

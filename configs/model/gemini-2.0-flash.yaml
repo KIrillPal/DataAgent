@@ -1,0 +1,8 @@
+# Configuration for API-based model
+provider: google
+model: gemini-2.0-flash-001
+api_env_var: OPENROUTER_API_KEY
+
+parameters:
+  temperature: 0.3
+  max_tokens: 2048
