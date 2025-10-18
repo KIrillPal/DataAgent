@@ -80,3 +80,21 @@ button{background:var(--panel);border:0;color:#fff;padding:10px 14px;border-radi
 
 /* small screens */
 @media(max-width:900px){.sidebar{display:none}.chat-area{padding:12px}}
+
+/* Bottom search bar - hidden by default, shown when main search scrolls out */
+.bottom-search{position:fixed;left:320px;right:0;bottom:20px;display:flex;justify-content:center;pointer-events:none;z-index:30}
+.bottom-search[aria-hidden="true"]{opacity:0;transform:translateY(8px);transition:opacity 180ms ease, transform 180ms ease;}
+.bottom-search[aria-hidden="false"]{opacity:1;transform:translateY(0);pointer-events:auto}
+.bottom-inner{display: flex;max-width:920px;width:calc(100% - 320px);padding:8px 12px;background: linear-gradient(90deg, rgb(59 53 67 / 98%), rgb(83 67 108 / 98%));border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.45)}
+.bottom .query{padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+.bottom .query.bottom{width:calc(100% - 110px);display:inline-block}
+.bottom-inner button{vertical-align:top;margin-left:10px}
+
+/* ensure messages area can scroll above bottom search and last lines are visible */
+.messages{padding-bottom:120px}
+
+@media(max-width:900px){
+  /* when sidebar hidden on small screens, bottom search should span full width */
+  .bottom-search{left:0;width:100%;}
+  .bottom-inner{width:100%;max-width:unset;padding:8px}
+}

@@ -360,3 +360,75 @@ document.getElementById('send').addEventListener('click', ()=>{
   ws.send(JSON.stringify({type:'query', payload:{text:q}}));
   document.getElementById('query').value = '';
 });
+
+// Bottom search: mirror main search behavior and show when main search scrolls out
+function isElementVisible(el){
+  if(!el) return false;
+  const r = el.getBoundingClientRect();
+  return (r.bottom >= 0 && r.top <= (window.innerHeight || document.documentElement.clientHeight));
+}
+
+const bottomBar = document.getElementById('bottom-search');
+const mainSearchWrapper = document.querySelector('.chat-top');
+if(bottomBar){
+  function updateBottomVisibility(){
+    // show bottom bar when the top chat-top is not fully visible (scrolled away)
+    const visible = isElementVisible(mainSearchWrapper);
+    if(visible){
+      bottomBar.setAttribute('aria-hidden','true');
+    } else {
+      // align bottom bar with the main content area (.main)
+      try{
+        const mainEl = document.querySelector('.main');
+        if(mainEl){
+          const r = mainEl.getBoundingClientRect();
+          // set left relative to viewport
+          bottomBar.style.left = (r.left + window.scrollX) + 'px';
+          bottomBar.style.width = r.width + 'px';
+        }
+      }catch(e){/* ignore */}
+      bottomBar.setAttribute('aria-hidden','false');
+    }
+  }
+
+  // wire bottom send to same behavior
+  const sendBottom = document.getElementById('send-bottom');
+  const queryBottom = document.getElementById('query-bottom');
+  if(sendBottom){
+    sendBottom.addEventListener('click', ()=>{
+      const q = queryBottom.value;
+      // reuse appendMessage and ws send
+      appendMessage('user', q);
+      ws.send(JSON.stringify({type:'query', payload:{text:q}}));
+      queryBottom.value = '';
+      // if main query exists and is visible, also sync value there (optional)
+      const mainQ = document.getElementById('query');
+      if(mainQ) mainQ.value = '';
+    });
+  }
+  // allow Enter to send
+  if(queryBottom){
+    queryBottom.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        sendBottom && sendBottom.click();
+      }
+    });
+
+    // when bottom input is focused and user types, optionally mirror into main input
+    queryBottom.addEventListener('input', ()=>{
+      const mainQ = document.getElementById('query');
+      if(mainQ) mainQ.value = queryBottom.value;
+    });
+  }
+
+  // update on scroll/resize and initial load
+  window.addEventListener('scroll', updateBottomVisibility, {passive:true});
+  window.addEventListener('resize', updateBottomVisibility);
+  // also reposition when layout changes (e.g. sidebar collapse) - simple observer
+  const ro = new ResizeObserver(()=>{ updateBottomVisibility(); });
+  const layoutRoot = document.querySelector('.container') || document.body;
+  try{ ro.observe(layoutRoot); }catch(e){}
+  // small debounce on load to ensure layout is ready
+  setTimeout(updateBottomVisibility, 80);
+}
