@@ -15,6 +15,7 @@ class DataAgent:
 
     def __init__(self, config):
         self.config = config
+        print("c", config)
         self.model = self.init_model(config['model'])
         self.thread_id = str(uuid.uuid4())
         (self.agent, self.memory) = self.init_agent(config['agent'])
@@ -28,6 +29,7 @@ class DataAgent:
         Returns:
             Initialized chat model instance
         """
+        print("m", model_config)
         provider = model_config['provider']
         model_name = model_config['model']
 

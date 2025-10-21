@@ -4,7 +4,6 @@ from typing import Optional
 from dotenv import load_dotenv
 
 import hydra
-from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig
 from .data_agent import DataAgent
 from . import server
@@ -24,6 +23,7 @@ def main(cfg: DictConfig) -> None:
     if cfg.app.get('run_server', False):
         host = cfg.app.get('host', '127.0.0.1')
         port = int(cfg.app.get('port', 8080))
+        server.data_agent_messenger.initialize_agent(cfg)
         # serve static files and API
         uvicorn.run(server.app, host=host, port=port)
         return
