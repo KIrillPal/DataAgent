@@ -149,14 +149,21 @@ function renderList(items){
   const icon = document.createElement('div'); icon.className='icon'; icon.textContent = it.is_dir ? '📁' : '📄';
   const name = document.createElement('div'); name.className='name'; name.textContent = it.name;
   el.appendChild(caret); el.appendChild(icon); el.appendChild(name);
+    // expose the path on the element so other helpers can find/expand it
+    el.dataset.path = it.path;
+    if(it.is_dir) el.setAttribute('aria-expanded','false');
+
+    // clicking the whole row toggles or selects
     el.onclick = ()=>{
       if(it.is_dir){
-        // toggle children visibility
         toggleFolder(it.path, el);
-      } else {
-        appendMessage('user', `Selected ${it.path}`);
       }
     }
+
+    // clicking the small caret should also toggle the folder (ensure small targets work)
+    caret.addEventListener('click', (e)=>{ e.stopPropagation(); if(it.is_dir) toggleFolder(it.path, el); });
+    // clicking the icon can also toggle directories
+    icon.addEventListener('click', (e)=>{ e.stopPropagation(); if(it.is_dir) toggleFolder(it.path, el); });
     tree.appendChild(el);
   })
 }
@@ -173,6 +180,13 @@ function renderFsRoot(items){
     el.appendChild(caret); el.appendChild(icon); el.appendChild(name);
     el.dataset.path = it.path;
     if(it.is_dir) el.setAttribute('aria-expanded','false');
+
+    // row click toggles or selects
+    el.onclick = ()=>{ if(it.is_dir) toggleFolder(it.path, el); };
+    // caret and icon should also be clickable targets
+    caret.addEventListener('click', (e)=>{ e.stopPropagation(); if(it.is_dir) toggleFolder(it.path, el); });
+    icon.addEventListener('click', (e)=>{ e.stopPropagation(); if(it.is_dir) toggleFolder(it.path, el); });
+
     tree.appendChild(el);
   })
 }
@@ -201,7 +215,7 @@ function toggleFolder(path, el){
         row.appendChild(caret); row.appendChild(icon); row.appendChild(name);
         row.dataset.path = it.path;
         if(it.is_dir) row.setAttribute('aria-expanded','false');
-        row.onclick = ()=>{ if(it.is_dir) toggleFolder(it.path, row); else appendMessage('user', `Selected ${it.path}`) };
+        row.onclick = ()=>{ if(it.is_dir) toggleFolder(it.path, row); };
         wrap.appendChild(row);
       })
       el.parentNode.insertBefore(wrap, el.nextSibling);
