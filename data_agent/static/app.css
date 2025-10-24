@@ -44,6 +44,12 @@ button{background:var(--panel);border:0;color:#fff;padding:10px 14px;border-radi
 .msg{background:transparent;padding:4px 0;border-radius:0;margin-bottom:8px;border:0}
 .msg .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
 
+/* Style user messages: make content bold */
+.msg.msg-user .content{font-weight:700;color:inherit}
+
+/* Style agent messages: slightly dimmer text color */
+.msg.msg-agent .content{color:#dbdbdb}
+
 .tool-box{padding:8px 0}
 .tool-row{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:6px;color:var(--muted);font-size:13px}
 .tool-row .tool-left{font-weight:600;color:var(--muted);font-size:12px}

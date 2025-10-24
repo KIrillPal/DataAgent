@@ -98,8 +98,12 @@ function parseToolCallsFromString(s){
 
 function appendMessage(role, text){
   const el = document.createElement('div');
+  // add a role-specific class so we can style user vs agent messages
   el.className = 'msg';
-  el.innerHTML = `<div class='meta'>${role}</div><div>${escapeHtml(text).replace(/\n/g,'<br>')}</div>`;
+  if(role === 'user') el.classList.add('msg-user');
+  else if(role === 'agent') el.classList.add('msg-agent');
+  // mark the message content with a .content class for easy styling
+  el.innerHTML = `<div class='meta'>${role}</div><div class='content'>${escapeHtml(text).replace(/\n/g,'<br>')}</div>`;
   document.getElementById('messages').appendChild(el);
   window.scrollTo(0, document.body.scrollHeight);
   return el;
