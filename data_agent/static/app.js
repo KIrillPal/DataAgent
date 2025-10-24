@@ -17,6 +17,8 @@ ws.addEventListener('message', ev => {
 });
 
 function handleWs(msg){
+  // remove any loading gifs as soon as agent starts sending a response
+  try{ removeAllLoadingGifs(); }catch(e){}
   const t = msg.type;
   if(t === 'list_result'){
     const payload = msg.payload;
@@ -100,6 +102,28 @@ function appendMessage(role, text){
   el.innerHTML = `<div class='meta'>${role}</div><div>${escapeHtml(text).replace(/\n/g,'<br>')}</div>`;
   document.getElementById('messages').appendChild(el);
   window.scrollTo(0, document.body.scrollHeight);
+  return el;
+}
+
+// Insert a loading GIF under a message element. Expects a gif at /static/loading-icon.gif
+function showLoadingGifUnder(msgEl){
+  if(!msgEl || !msgEl.parentNode) return null;
+  // avoid adding duplicate
+  const next = msgEl.nextElementSibling;
+  if(next && next.classList && next.classList.contains('loading-gif-wrapper')) return next;
+  const wrap = document.createElement('div');
+  wrap.className = 'loading-gif-wrapper';
+  wrap.innerHTML = `<img src="/static/loading-icon.gif" alt="loading" class="loading-gif" width="300"/>`;
+  // insert after the message element
+  msgEl.parentNode.insertBefore(wrap, msgEl.nextSibling);
+  // scroll to reveal loader
+  window.scrollTo(0, document.body.scrollHeight);
+  return wrap;
+}
+
+function removeAllLoadingGifs(){
+  const els = Array.from(document.querySelectorAll('.loading-gif-wrapper'));
+  els.forEach(e=>{ try{ e.remove(); }catch(_){} });
 }
 
 function escapeHtml(unsafe) {
@@ -356,7 +380,9 @@ function renderToolCalls(calls){
 
 document.getElementById('send').addEventListener('click', ()=>{
   const q = document.getElementById('query').value;
-  appendMessage('user', q);
+  const userMsg = appendMessage('user', q);
+  // show loading gif under the user's message
+  try{ showLoadingGifUnder(userMsg); }catch(e){}
   ws.send(JSON.stringify({type:'query', payload:{text:q}}));
   document.getElementById('query').value = '';
 });
@@ -394,11 +420,12 @@ if(bottomBar){
   // wire bottom send to same behavior
   const sendBottom = document.getElementById('send-bottom');
   const queryBottom = document.getElementById('query-bottom');
-  if(sendBottom){
+    if(sendBottom){
     sendBottom.addEventListener('click', ()=>{
       const q = queryBottom.value;
       // reuse appendMessage and ws send
-      appendMessage('user', q);
+      const userMsg = appendMessage('user', q);
+      try{ showLoadingGifUnder(userMsg); }catch(e){}
       ws.send(JSON.stringify({type:'query', payload:{text:q}}));
       queryBottom.value = '';
       // if main query exists and is visible, also sync value there (optional)

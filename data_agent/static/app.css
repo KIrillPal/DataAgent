@@ -93,6 +93,10 @@ button{background:var(--panel);border:0;color:#fff;padding:10px 14px;border-radi
 /* ensure messages area can scroll above bottom search and last lines are visible */
 .messages{padding-bottom:120px}
 
+/* Loading GIF inserted under a user's message */
+.loading-gif-wrapper{padding:8px 0 18px 0;display:flex;justify-content:left}
+.loading-gif{width:140px;height:auto;display:block;border-radius:6px}
+
 @media(max-width:900px){
   /* when sidebar hidden on small screens, bottom search should span full width */
   .bottom-search{left:0;width:100%;}
