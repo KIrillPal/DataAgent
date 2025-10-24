@@ -97,7 +97,7 @@ class MessageHandler:
                 await self.manager.send_json(client_id, {"type": "tool_calls", "payload": tool_calls})
                 continue
 
-            if content := self.__extract_content(message):
+            if content := self.__extract_content(message, message_type='AIMessage'):
                 send_text = content if first_piece else f"\n{content}"
                 first_piece = False
                 results.append({'content': send_text})
@@ -126,8 +126,10 @@ class MessageHandler:
             return message.get('tool_calls')
         return None
 
-    def __extract_content(self, message) -> Optional[str]:
+    def __extract_content(self, message, message_type=None) -> Optional[str]:
         """Extract content from message."""
+        if message_type and message.__class__.__name__ != message_type:
+            return None
         if hasattr(message, 'content'):
             return message.content
         elif isinstance(message, dict):
