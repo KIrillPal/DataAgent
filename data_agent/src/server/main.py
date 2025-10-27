@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -103,20 +103,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         # Route message to appropriate handler
         await message_handler.route_message(client_id, message_type, payload)
 
-@app.get("/static/loading-icon.gif")
-async def loading_icon_static():
-    """Serve a loading icon GIF from the static directory if present.
-
-    This makes the file available at /static/loading-icon.gif even if the
-    static mount doesn't directly expose the expected filename. If the
-    exact filename is not found, try a fallback name `loading.gif`.
-    """
-    candidates = [ROOT / 'loading-icon.gif', ROOT / 'loading.gif']
-    for p in candidates:
-        try:
-            if p.exists():
-                return FileResponse(str(p), media_type='image/gif')
-        except Exception:
-            continue
-    # Not found — return a 404 so callers know to add the file
-    raise HTTPException(status_code=404, detail='loading-icon.gif not found in static directory')
+@app.get("/static/<path:path>")
+async def serve_static_file(path: str):
+    """Serve static files from the static directory."""
+    file_path = ROOT / path
+    if file_path.exists():
+        return FileResponse(str(file_path))
+    raise HTTPException(status_code=404, detail="File not found")
