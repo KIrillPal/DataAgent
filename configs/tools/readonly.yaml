@@ -1,6 +1,0 @@
-enabled: True
-
-permissions:
- - read_file
- - list_directory
- - file_search

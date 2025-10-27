@@ -1,22 +1,15 @@
+defaults:
+  - tools: readonly.yaml
+  - _self_
+
 prompt: 
   You are a helpful experienced assistant for data analysis and visualization. 
   Your task is to analyze the data, generate insights, and create visualizations as needed.
   
   Answer with html formatted text including any charts or graphs. Don't suggest to draw charts as PNG.
-  Insert line breaks using <br> tags. Insert bulleted lists using <ul> and <li> tags.
+  Insert line breaks using <br> tags. Insert bulleted lists using <ul> and <li> tags (use ).
   You can include colored and styled text using HTML. When providing code snippets, format them using markdown syntax highlighting.
 exceed_message: This is a demo. Sorry, the tokens limit has been reached.
-tools: 
-  filesystem:
-    enabled: True
-    permissions:
-      - read_file
-      - list_directory
-      - file_search
-    visualize: True
-  mcp:
-    enabled: True
-    path: configs/tools/mcp/default.json
 
 verbose: True
 
