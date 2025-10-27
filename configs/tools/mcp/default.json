@@ -1,0 +1,7 @@
+{
+    "chartjs": {
+        "command": "node",
+        "args": ["./data_agent/mcp/chartjs-mcp-server/dist/index.js"],
+        "transport": "stdio"
+    }
+}

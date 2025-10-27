@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from typing import Any, Dict, Optional, List, TextIO
 import os
@@ -15,7 +16,6 @@ class DataAgent:
 
     def __init__(self, config):
         self.config = config
-        print("c", config)
         self.model = self.init_model(config['model'])
         self.thread_id = str(uuid.uuid4())
         (self.agent, self.memory) = self.init_agent(config['agent'])
@@ -29,7 +29,6 @@ class DataAgent:
         Returns:
             Initialized chat model instance
         """
-        print("m", model_config)
         provider = model_config['provider']
         model_name = model_config['model']
 
@@ -68,7 +67,7 @@ class DataAgent:
         
         return agent, memory
 
-    def run(self, prompt: str, verbose: bool = False, thread_id: Optional[str] = None) -> List[BaseMessage]:
+    async def run(self, prompt: str, verbose: bool = False, thread_id: Optional[str] = None) -> List[BaseMessage]:
         """
         Run the agent with the given prompt and stream results.
         
@@ -89,14 +88,14 @@ class DataAgent:
         with open(f"/home/kir/mipt/DataAgent/outputs/{current_thread_id}.txt", "w") as f:
             print("Inference started...", flush=True, file=f)
             # Inference
-            stream = self.agent.stream(
+            astream = self.agent.astream(
                 {"messages": [input_message]},
                 config,
                 stream_mode="values"
             )
 
             messages = []
-            for event in stream:
+            async for event in astream:
                 if "messages" in event:
                     last_msg = event["messages"][-1]
                     messages.append(last_msg)

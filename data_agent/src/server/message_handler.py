@@ -87,8 +87,7 @@ class MessageHandler:
 
     async def __process_agent_response(self, client_id: str, agent, query: str):
         """Process agent response and send appropriate messages."""
-        print("Running")
-        messages = agent.run(query, thread_id=client_id, verbose=True)
+        messages = await agent.run(query, thread_id=client_id, verbose=True)
         results = []
         first_piece = True
 
@@ -98,9 +97,9 @@ class MessageHandler:
                 continue
 
             if content := self.__extract_content(message, message_type='AIMessage'):
-                send_text = content if first_piece else f"\n{content}"
-                first_piece = False
-                results.append({'content': send_text})
+                    send_text = content if first_piece else f" {content}"
+                    first_piece = False
+                    results.append({'content': send_text})
 
         await self.manager.send_json(client_id, {
             "type": "agent_result", 

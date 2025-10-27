@@ -16,7 +16,6 @@ class DataAgentMessenger:
     def initialize_agent(self, config : Dict) -> bool:
         """Initialize DataAgent with configuration."""
         try:
-            print(config)
             self.agent = DataAgent(config)
             return True
 

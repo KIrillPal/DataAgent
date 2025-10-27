@@ -48,7 +48,8 @@ function handleWs(msg){
       document.getElementById('messages').appendChild(partial);
     }
     const c = partial.querySelector('.stream-content');
-    c.innerHTML = (c.innerHTML || '') + escapeHtml(incoming).replace(/\n/g, '<br>');
+    // Render incoming streaming content as sanitized HTML for agent output
+    c.innerHTML = (c.innerHTML || '') + sanitizeHtml(incoming);
   } else if(t === 'agent_stream_end'){
     // finalize streaming message
     const partial = document.getElementById('streaming-partial');
@@ -96,17 +97,43 @@ function parseToolCallsFromString(s){
   return null;
 }
 
+function executeScripts(container) {
+    const scripts = container.querySelectorAll('script');
+    scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        // Копируем все атрибуты
+        Array.from(oldScript.attributes).forEach(attr => {
+            newScript.setAttribute(attr.name, attr.value);
+        });
+        // Копируем содержимое скрипта
+        newScript.textContent = oldScript.textContent;
+        // Заменяем старый скрипт новым (это запустит его)
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+}
+
 function appendMessage(role, text){
-  const el = document.createElement('div');
-  // add a role-specific class so we can style user vs agent messages
-  el.className = 'msg';
-  if(role === 'user') el.classList.add('msg-user');
-  else if(role === 'agent') el.classList.add('msg-agent');
-  // mark the message content with a .content class for easy styling
-  el.innerHTML = `<div class='meta'>${role}</div><div class='content'>${escapeHtml(text).replace(/\n/g,'<br>')}</div>`;
-  document.getElementById('messages').appendChild(el);
-  window.scrollTo(0, document.body.scrollHeight);
-  return el;
+    const el = document.createElement('div');
+    el.className = 'msg';
+    if(role === 'user') el.classList.add('msg-user');
+    else if(role === 'agent') el.classList.add('msg-agent');
+    
+    let contentHtml;
+    if(role === 'agent'){
+        contentHtml = String(text);
+    } else {
+        contentHtml = escapeHtml(String(text)).replace(/\n/g, '<br>');
+    }
+    
+    el.innerHTML = `<div class='meta'>${role}</div><div class='content'>${contentHtml}</div>`;
+    document.getElementById('messages').appendChild(el);
+    
+    if(role === 'agent') {
+        executeScripts(el);
+    }
+    
+    window.scrollTo(0, document.body.scrollHeight);
+    return el;
 }
 
 // Insert a loading GIF under a message element. Expects a gif at /static/loading-icon.gif
@@ -138,6 +165,39 @@ function escapeHtml(unsafe) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// Minimal HTML sanitizer: removes dangerous elements and attributes.
+// Not a full replacement for a library like DOMPurify, but sufficient
+// for simple, mostly-trusted content. It strips <script>, <style>, <iframe>,
+// <object>, <embed> and removes event/on* attributes and inline styles.
+function sanitizeHtml(unsafeHtml){
+  if(!unsafeHtml) return '';
+  try{
+    const doc = new DOMParser().parseFromString(String(unsafeHtml), 'text/html');
+    // remove forbidden tags entirely
+    ['script','style','iframe','object','embed'].forEach(tag => {
+      doc.querySelectorAll(tag).forEach(n=>n.remove());
+    });
+    // strip dangerous attributes from all elements
+    doc.querySelectorAll('*').forEach(node=>{
+      [...node.attributes].forEach(attr => {
+        const name = attr.name.toLowerCase();
+        const val = (attr.value || '').toLowerCase();
+        if(name.startsWith('on')){
+          node.removeAttribute(attr.name);
+        } else if((name === 'href' || name === 'src') && val.startsWith('javascript:')){
+          node.removeAttribute(attr.name);
+        } else if(name === 'style'){
+          // remove inline styles to avoid url() abuses
+          node.removeAttribute(attr.name);
+        }
+      });
+    });
+    return doc.body.innerHTML || '';
+  }catch(e){
+    return escapeHtml(unsafeHtml);
+  }
 }
 function renderList(items){
   const tree = document.getElementById('fs-tree');
