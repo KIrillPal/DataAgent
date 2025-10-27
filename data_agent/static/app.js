@@ -457,12 +457,16 @@ function renderToolCalls(calls){
 // chat-tool buttons removed from UI; no handlers necessary
 
 document.getElementById('send').addEventListener('click', ()=>{
-  const q = document.getElementById('query').value;
+  const qEl = document.getElementById('query');
+  if(!qEl) return;
+  const q = qEl.value.trim();
+  // don't send empty queries
+  if(!q) return;
   const userMsg = appendMessage('user', q);
   // show loading gif under the user's message
   try{ showLoadingGifUnder(userMsg); }catch(e){}
   ws.send(JSON.stringify({type:'query', payload:{text:q}}));
-  document.getElementById('query').value = '';
+  qEl.value = '';
 });
 
 // Bottom search: mirror main search behavior and show when main search scrolls out
@@ -500,17 +504,29 @@ if(bottomBar){
   const queryBottom = document.getElementById('query-bottom');
     if(sendBottom){
     sendBottom.addEventListener('click', ()=>{
-      const q = queryBottom.value;
-      // reuse appendMessage and ws send
-      const userMsg = appendMessage('user', q);
-      try{ showLoadingGifUnder(userMsg); }catch(e){}
-      ws.send(JSON.stringify({type:'query', payload:{text:q}}));
-      queryBottom.value = '';
+        const q = (queryBottom && queryBottom.value) ? queryBottom.value.trim() : '';
+        if(!q) return; // don't send empty
+        // reuse appendMessage and ws send
+        const userMsg = appendMessage('user', q);
+        try{ showLoadingGifUnder(userMsg); }catch(e){}
+        ws.send(JSON.stringify({type:'query', payload:{text:q}}));
+        queryBottom.value = '';
       // if main query exists and is visible, also sync value there (optional)
       const mainQ = document.getElementById('query');
       if(mainQ) mainQ.value = '';
     });
   }
+    // Pressing Enter in the main query input should act like clicking Send
+    const mainQ = document.getElementById('query');
+    if(mainQ){
+      mainQ.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          const sendBtn = document.getElementById('send');
+          sendBtn && sendBtn.click();
+        }
+      });
+    }
   // allow Enter to send
   if(queryBottom){
     queryBottom.addEventListener('keydown', (e)=>{
