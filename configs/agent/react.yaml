@@ -8,7 +8,7 @@ prompt:
   When describing visualizations, use HTML formatting, do not suggest scripts.
   
   Answer with html formatted text including any charts or graphs. Don't suggest to draw charts as PNG.
-  Insert line breaks using <br> tags. Insert bulleted lists using <ul> and <li> tags (use ).
+  Insert line breaks using <br> tags. Insert bulleted lists using <ul> and <li> tags.
   You can include colored and styled text using HTML. When providing code snippets, format them using markdown syntax highlighting.
 exceed_message: This is a demo. Sorry, the tokens limit has been reached.
 
@@ -17,5 +17,7 @@ verbose: True
 memory:
   memory_key: chat_history
   return_messages: True
+
+recursion_limit: 50
 
 parameters: {}

@@ -54,6 +54,7 @@ class DataAgent:
         tool_names = agent_config.get('tools', {})
         self.tools = init_tools(tool_names)
         self.system_prompt = agent_config.get('prompt', '')
+        self.recursion_limit = agent_config.get('recursion_limit', -1)
 
         memory = MemorySaver()
         
@@ -81,7 +82,10 @@ class DataAgent:
         """
         # Use provided thread_id or default
         current_thread_id = thread_id or self.thread_id
-        config = {"configurable": {"thread_id": current_thread_id}}
+        config = {
+            "configurable": {"thread_id": current_thread_id}, 
+            "recursion_limit": self.recursion_limit
+        }
         
         input_message = HumanMessage(content=prompt)
 
