@@ -89,7 +89,7 @@ class DataAgent:
         
         input_message = HumanMessage(content=prompt)
 
-        with open(f"/home/kir/mipt/DataAgent/outputs/{current_thread_id}.txt", "w") as f:
+        with open(f"outputs/{current_thread_id}.txt", "w") as f:
             print("Inference started...", flush=True, file=f)
             # Inference
             astream = self.agent.astream(

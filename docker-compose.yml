@@ -1,0 +1,23 @@
+# How to run:
+#   Put your API key in a local .env file with the variable name expected by your model
+#   configuration, for example: OPENROUTER_API_KEY=sk-...
+
+services:
+  data_agent:
+    build: .
+    ports:
+      - 8080:8080
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./:/app:rw
+    env_file:
+      - .env
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      start_interval: 5s

@@ -19,6 +19,9 @@ langgraph = ">=0.6.10"
 fastapi = ">=0.95.0"
 uvicorn = {version = ">=0.22.0", extras = ["standard"]}
 langchain-mcp-adapters = "^0.1.11"
+dotenv = "^0.9.9"
+langchain-openai = "^1.0.1"
+langchain-community = "^0.4.1"
 
 
 
