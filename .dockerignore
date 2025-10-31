@@ -1,0 +1,20 @@
+# Ignore Python artifacts and local environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+.venv/
+dist/
+build/
+/.mypy_cache
+/.pytest_cache
+/.cache
+*.egg-info
+*.egg
+.DS_Store
+
+# Poetry
+.venv/
+poetry.lock

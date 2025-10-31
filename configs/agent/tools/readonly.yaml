@@ -1,0 +1,10 @@
+filesystem:
+  enabled: True
+  permissions:
+    - read_file
+    - list_directory
+    - file_search
+  visualize: True
+mcp:
+  enabled: True
+  path: configs/agent/tools/mcp/default.json

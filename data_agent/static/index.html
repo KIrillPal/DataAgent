@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DataAgent UI</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <link rel="icon" href="/static/favicon.ico" />
+    <img src="/static/loading-icon.gif" alt="Loading icon" style="display: none;" />
+  </head>
+  <body>
+    <div class="container">
+      <aside class="sidebar">
+        <div class="fs-header">PROJECT</div>
+        <div id="fs-tree" class="fs-tree"></div>
+      </aside>
+
+      <main class="main">
+        <div class="chat-area">
+          <div class="chat-top">
+            <input id="query" class="query" placeholder="Ask about datasets or files..." />
+            <button id="send">Send</button>
+          </div>
+
+          <div id="messages" class="messages"></div>
+
+          <!-- chat tools removed per UI request -->
+        </div>
+      </main>
+    </div>
+
+    <!-- Bottom search bar: appears when the main search scrolls out of view -->
+    <div id="bottom-search" class="bottom-search" aria-hidden="true">
+      <div class="bottom-inner">
+        <input id="query-bottom" class="query bottom" placeholder="Ask about datasets or files..." />
+        <button id="send-bottom">Send</button>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -12,7 +12,17 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-langchain = "^0.3.27"
+langchain = ">=0.3.27"
+hydra-core = ">=1.3.2"
+omegaconf = ">=2.3.0"
+langgraph = ">=0.6.10"
+fastapi = ">=0.95.0"
+uvicorn = {version = ">=0.22.0", extras = ["standard"]}
+langchain-mcp-adapters = "^0.1.11"
+dotenv = "^0.9.9"
+langchain-openai = "^1.0.1"
+langchain-community = "^0.4.1"
+
 
 
 [build-system]
