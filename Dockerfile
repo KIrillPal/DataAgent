@@ -1,22 +1,23 @@
-FROM node:18-slim
+FROM node:20-slim
 
 WORKDIR /app
 
 # Install python/pip
-RUN apt-get update
-RUN apt-get install -y python3-pip python3.11-venv
+RUN apt-get update && \
+    apt-get install -y python3-pip python3.11-venv
 
-# Copy application files
-COPY . /app
-COPY pyproject.toml /app
-COPY poetry.lock* /app
+# Python dependencies installation
+RUN python3 -m venv ~/venv \
+  && . ~/venv/bin/activate \
+  && pip install --upgrade pip && pip install poetry
 
-# Dependencies installation
-RUN python3 -m venv ~/venv
+# Project installation
+COPY ./ pyproject.toml poetry.lock* /app
 RUN . ~/venv/bin/activate \
-  && pip install --upgrade pip && pip install poetry \
   && python -m poetry install --no-interaction --no-ansi
 
 EXPOSE 8080
 
-CMD . ~/venv/bin/activate && python3 -m data_agent
+# Run the server
+CMD bash ./data_agent/mcp/scripts/chatjs-install.sh \
+  && . ~/venv/bin/activate && python3 -m data_agent
