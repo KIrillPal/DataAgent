@@ -70,12 +70,17 @@ class MessageHandler:
     async def handle_query(self, client_id: str, payload: Dict[str, Any]):
         """Handle agent query request."""
         query_text = payload.get('text', '')
-        agent = self.agent_messenger.get_agent()
         
-        if agent is None:
-            await self.__send_agent_error(client_id, "Agent not initialized")
-        else:
-            await self.__process_agent_response(client_id, agent, query_text)
+        try:
+            agent = self.agent_messenger.get_agent()
+
+            if agent is None:
+                await self.__send_agent_error(client_id, "Agent not initialized")
+            else:
+                await self.__process_agent_response(client_id, agent, query_text)
+        except Exception as e:
+            await self.__send_agent_error(client_id, str(e))
+
 
     async def handle_echo(self, client_id: str, data: Dict[str, Any]):
         """Handle echo message."""
