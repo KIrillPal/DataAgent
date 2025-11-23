@@ -3,12 +3,19 @@ import sys
 from typing import Any, Dict, Optional, List, TextIO
 import os
 import uuid
+import base64
+from io import BytesIO
+from PIL import Image
+from pathlib import Path
+
 from langgraph.checkpoint.memory import MemorySaver
 from langchain.chat_models import init_chat_model
+from langchain_openai.chat_models.base import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langgraph.graph import StateGraph, START, MessagesState
 from langchain_core.messages import BaseMessage, HumanMessage
 
+from .vllm_server import VLLM_PROVIDER
 from .tools import init as init_tools
 
 
@@ -30,14 +37,51 @@ class DataAgent:
             Initialized chat model instance
         """
         provider = model_config['provider']
-        model_name = model_config['model']
+        if provider == VLLM_PROVIDER:
+            return self.init_vllm_model(model_config)
+        return self.init_api_model(model_config)
 
+    def init_api_model(self, model_config: Dict) -> Any:
+        """
+        Initialize the chat model based on the configuration with API key.
+        
+        Args:
+            model_config: Configuration dictionary for the model
+        Returns:
+            Initialized chat model instance
+        """
+        provider = model_config['provider']
+        model_name = model_config['model']
         API_KEY = os.getenv(model_config['api_env_var'])
+
 
         model = init_chat_model(
             model=model_name,
             model_provider=provider,
             api_key=API_KEY,
+            **model_config.get('parameters', {})
+        )
+        return model
+    
+    def init_vllm_model(self, model_config: Dict) -> Any:
+        """
+        Initialize the chat model based on the configuration 
+        with vLLM server running.
+        
+        Args:
+            model_config: Configuration dictionary for the model
+        Returns:
+            Initialized chat model instance
+        """
+        model_name = model_config['model']
+        host = model_config['vllm']['host']
+        port = model_config['vllm']['port']
+        base_url = f"http://{host}:{port}/v1"
+
+        model = ChatOpenAI(
+            model=model_name,
+            base_url=base_url,
+            api_key="foo",
             **model_config.get('parameters', {})
         )
         return model
@@ -68,15 +112,21 @@ class DataAgent:
         
         return agent, memory
 
-    async def run(self, prompt: str, verbose: bool = False, thread_id: Optional[str] = None) -> List[BaseMessage]:
+    async def run(
+            self, 
+            prompt: str, 
+            verbose: bool = False, 
+            thread_id: Optional[str] = None,
+            image_paths: List[Path | str] = []
+        ) -> List[BaseMessage]:
         """
-        Run the agent with the given prompt and stream results.
+        Run the agent with optional image input.
         
         Args:
             prompt: Input text to process
             verbose: Whether to print detailed message sequence
-            thread_id: Optional thread ID for conversation tracking. 
-                If not provided, uses default.
+            thread_id: Optional thread ID for conversation tracking
+            image_paths: List with image files for multimodal processing
         Returns:
             List of response messages
         """
@@ -87,10 +137,11 @@ class DataAgent:
             "recursion_limit": self.recursion_limit
         }
         
-        input_message = HumanMessage(content=prompt)
+        input_message = self._create_human_message(prompt, image_paths)
 
         with open(f"outputs/{current_thread_id}.txt", "w") as f:
             print("Inference started...", flush=True, file=f)
+            
             # Inference
             astream = self.agent.astream(
                 {"messages": [input_message]},
@@ -105,6 +156,7 @@ class DataAgent:
                     messages.append(last_msg)
                     if verbose:
                         self._print_message("Streamed Message", last_msg, file=f)
+        
         # Check last message content and handle empty case
         if messages and not messages[-1].content:
             messages[-1].content = self.config['agent'].get('exceed_message', '')
@@ -133,7 +185,6 @@ class DataAgent:
         current_thread_id = thread_id or self.thread_id
         config = {"configurable": {"thread_id": current_thread_id}}
         
-        # Get the current state to access history
         state = self.agent.get_state(config)
         return state.values.get("messages", []) if state else []
 
@@ -146,6 +197,29 @@ class DataAgent:
         """
         current_thread_id = thread_id or self.thread_id
         config = {"configurable": {"thread_id": current_thread_id}}
-        
-        # Clear state by setting empty messages
         self.agent.update_state(config, {"messages": []})
+
+    def _image_to_base64(self, image_path: Path | str) -> str:
+        """Convert image to base64 string"""
+        with Image.open(image_path) as img:
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            buffered = BytesIO()
+            img.save(buffered, format="JPEG")
+            return base64.b64encode(buffered.getvalue()).decode('utf-8')
+        
+    def _create_human_message(self, prompt: str, image_paths: List[Path | str]):
+        content = []
+
+        for img_p in image_paths:
+            base64_image = self._image_to_base64(img_p)
+            content.append({
+                "type": "image_url",
+                "image_url": f"data:image/jpeg;base64,{base64_image}",
+            })
+        
+        content.append({
+            "type": "text", 
+            "text": prompt
+        })
+        return HumanMessage(content=content)

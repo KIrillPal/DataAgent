@@ -1,0 +1,17 @@
+defaults:
+- vllm: default.yaml
+- _self_
+
+provider: vllm
+model: HuggingFaceTB/SmolVLM2-2.2B-Instruct
+api_env_var: null
+
+parameters:
+  temperature: 0.3
+  max_tokens: 1024
+
+vllm_parameters:
+  max_model_len: 2048
+  max_num_seqs: 1
+
+

@@ -23,9 +23,11 @@ def main(cfg: DictConfig) -> None:
     if cfg.app.get('run_server', False):
         host = cfg.app.get('host', '127.0.0.1')
         port = int(cfg.app.get('port', 8080))
+        server.data_agent_messenger.initialize_vllm(cfg)
         server.data_agent_messenger.initialize_agent(cfg)
         # serve static files and API
         uvicorn.run(server.app, host=host, port=port)
+        # serve VLLM inference
         return
 
     agent = DataAgent(cfg)
