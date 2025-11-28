@@ -215,7 +215,7 @@ class DataAgent:
             base64_image = self._image_to_base64(img_p)
             content.append({
                 "type": "image_url",
-                "image_url": f"data:image/jpeg;base64,{base64_image}",
+                "image_url": { "url": f"data:image/jpeg;base64,{base64_image}" }
             })
         
         content.append({

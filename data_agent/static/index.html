@@ -19,7 +19,9 @@
         <div class="chat-area">
           <div class="chat-top">
             <input id="query" class="query" placeholder="Ask about datasets or files..." />
+            <button id="image-upload-btn" class="image-upload-btn" title="Upload images">📎</button>
             <button id="send">Send</button>
+            <input id="image-file-input" type="file" accept="image/*" multiple style="display: none;" />
           </div>
 
           <div id="messages" class="messages"></div>
@@ -33,6 +35,7 @@
     <div id="bottom-search" class="bottom-search" aria-hidden="true">
       <div class="bottom-inner">
         <input id="query-bottom" class="query bottom" placeholder="Ask about datasets or files..." />
+        <button id="image-upload-btn-bottom" class="image-upload-btn" title="Upload images">📎</button>
         <button id="send-bottom">Send</button>
       </div>
     </div>

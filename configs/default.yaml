@@ -1,4 +1,4 @@
 defaults:
-  - model: vllm-smolvlm2-instruct.yaml
+  - model: gpt-5.1.yaml
   - agent: react.yaml
   - app: default.yaml

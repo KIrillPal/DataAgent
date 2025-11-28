@@ -1,10 +1,15 @@
 import json
 from pathlib import Path
 from typing import Dict, Any
+import tempfile
+import os
+from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import Image
+import io
 
 from .connection_manager import ConnectionManager
 from .data_agent_messenger import DataAgentMessenger
@@ -38,6 +43,63 @@ async def index():
 @app.get("/api/list_dir")
 async def list_dir_wrapper(path: str = ".", max_items: int = 100):
     return list_dir(path, max_items)
+
+@app.post('/api/upload_image')
+async def upload_image(file: UploadFile = File(...)):
+    """Upload an image file to temporary storage on the server."""
+    try:
+        # Validate file is an image
+        if not file.content_type or not file.content_type.startswith('image/'):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "File must be an image"}
+            )
+        
+        # Read and validate image
+        contents = await file.read()
+        if not contents:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Empty file"}
+            )
+        
+        # Verify it's a valid image by trying to open it
+        try:
+            img = Image.open(io.BytesIO(contents))
+            # Ensure it can be opened
+            img.verify()
+        except Exception as e:
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Invalid or corrupted image: {str(e)}"}
+            )
+        
+        # Create temporary directory if it doesn't exist
+        temp_dir = Path(tempfile.gettempdir()) / "dataagent_images"
+        temp_dir.mkdir(exist_ok=True)
+        
+        # Generate unique filename
+        file_ext = Path(file.filename).suffix or '.jpg'
+        unique_filename = f"{uuid4()}{file_ext}"
+        file_path = temp_dir / unique_filename
+        
+        # Save file
+        with open(file_path, 'wb') as f:
+            f.write(contents)
+        
+        log_msg(f"Image uploaded: {file_path}")
+        
+        return JSONResponse(
+            status_code=200,
+            content={"path": str(file_path)}
+        )
+        
+    except Exception as e:
+        log_msg(f"Image upload error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Server error: {str(e)}"}
+        )
 
 @app.post('/api/emit_tool_calls')
 async def emit_tool_calls(request: Request):

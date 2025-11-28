@@ -1,6 +1,6 @@
 from .connection_manager import ConnectionManager
 from .data_agent_messenger import DataAgentMessenger
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import json
 
 from .utils import list_dir
@@ -70,6 +70,7 @@ class MessageHandler:
     async def handle_query(self, client_id: str, payload: Dict[str, Any]):
         """Handle agent query request."""
         query_text = payload.get('text', '')
+        image_paths = payload.get('image_paths', [])
         
         try:
             agent = self.agent_messenger.get_agent()
@@ -77,7 +78,7 @@ class MessageHandler:
             if agent is None:
                 await self.__send_agent_error(client_id, "Agent not initialized")
             else:
-                await self.__process_agent_response(client_id, agent, query_text)
+                await self.__process_agent_response(client_id, agent, query_text, image_paths)
         except Exception as e:
             await self.__send_agent_error(client_id, str(e))
 
@@ -90,9 +91,9 @@ class MessageHandler:
     # Private #
     ###########
 
-    async def __process_agent_response(self, client_id: str, agent, query: str):
+    async def __process_agent_response(self, client_id: str, agent, query: str, image_paths: List[str] = []):
         """Process agent response and send appropriate messages."""
-        messages = await agent.run(query, thread_id=client_id, verbose=True)
+        messages = await agent.run(query, thread_id=client_id, verbose=True, image_paths=image_paths)
         results = []
         first_piece = True
 
@@ -117,7 +118,7 @@ class MessageHandler:
             "type": "agent_error", 
             "payload": {
                 "error": error,
-                "details": self.agent_messenger.get_init_error()
+                #"details": self.agent_messenger.get_init_error()
             }
         }
         await self.manager.send_json(client_id, err_msg)

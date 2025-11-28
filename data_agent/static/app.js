@@ -1,6 +1,10 @@
 const clientId = Math.random().toString(36).slice(2,9);
 const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/${clientId}`);
 
+// Global state for image uploads
+let selectedImages = [];
+let imageDisplayElement = null;
+
 ws.addEventListener('open', ()=>{
   console.log('ws open')
   // fetch root filesystem listing on connect
@@ -454,7 +458,189 @@ function renderToolCalls(calls){
   window.scrollTo(0, document.body.scrollHeight);
 }
 
+// Image upload handlers
+async function validateAndUploadImages(files) {
+  const validImages = [];
+  const errors = [];
+  
+  for (const file of files) {
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      errors.push(`${file.name}: Not an image file`);
+      continue;
+    }
+    
+    // Check file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      errors.push(`${file.name}: File too large (max 20MB)`);
+      continue;
+    }
+    
+    // Check if file is empty
+    if (file.size === 0) {
+      errors.push(`${file.name}: Empty file`);
+      continue;
+    }
+    
+    // Try to read and validate image
+    try {
+      const isValid = await validateImageFile(file);
+      if (isValid) {
+        validImages.push(file);
+      } else {
+        errors.push(`${file.name}: Invalid or corrupted image`);
+      }
+    } catch (e) {
+      errors.push(`${file.name}: ${e.message}`);
+    }
+  }
+  
+  if (errors.length > 0) {
+    console.warn('Image validation errors:', errors);
+    alert('Some files could not be loaded:\n' + errors.join('\n'));
+  }
+  
+  if (validImages.length > 0) {
+    return validImages;
+  }
+  return [];
+}
+
+function validateImageFile(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    const img = new Image();
+    
+    reader.onload = (e) => {
+      img.onload = () => {
+        resolve(true);
+      };
+      img.onerror = () => {
+        resolve(false);
+      };
+      img.src = e.target.result;
+    };
+    
+    reader.onerror = () => {
+      resolve(false);
+    };
+    
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadImagesToServer(files) {
+  const uploadedPaths = [];
+  
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await fetch('/api/upload_image', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.path) {
+          uploadedPaths.push(data.path);
+        }
+      } else {
+        const error = await response.json();
+        console.error(`Failed to upload ${file.name}:`, error);
+        alert(`Failed to upload ${file.name}: ${error.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error(`Upload error for ${file.name}:`, e);
+      alert(`Upload error for ${file.name}: ${e.message}`);
+    }
+  }
+  
+  return uploadedPaths;
+}
+
+function displaySelectedImages(files) {
+  const container = document.querySelector('.chat-top');
+  
+  // Remove existing image display if present
+  const existing = document.getElementById('image-display');
+  if (existing) existing.remove();
+  
+  if (files.length === 0) {
+    selectedImages = [];
+    imageDisplayElement = null;
+    return;
+  }
+  
+  // Create and display image indicators
+  const displayDiv = document.createElement('div');
+  displayDiv.id = 'image-display';
+  displayDiv.className = 'image-display';
+  
+  const label = document.createElement('div');
+  label.className = 'image-count-label';
+  label.textContent = `📎 ${files.length} image${files.length !== 1 ? 's' : ''}`;
+  displayDiv.appendChild(label);
+  
+  // Create clear button
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'image-clear-btn';
+  clearBtn.textContent = '✕';
+  clearBtn.title = 'Clear selected images';
+  clearBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    selectedImages = [];
+    const input = document.getElementById('image-file-input');
+    input.value = '';
+    displaySelectedImages([]);
+  });
+  displayDiv.appendChild(clearBtn);
+  
+  // Insert before the send button
+  const sendBtn = document.getElementById('send');
+  container.insertBefore(displayDiv, sendBtn);
+  
+  imageDisplayElement = displayDiv;
+}
+
 // chat-tool buttons removed from UI; no handlers necessary
+
+// Setup image upload button handlers
+function setupImageUploadHandlers() {
+  const fileInput = document.getElementById('image-file-input');
+  const uploadBtn = document.getElementById('image-upload-btn');
+  const uploadBtnBottom = document.getElementById('image-upload-btn-bottom');
+  
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.click();
+    });
+  }
+  
+  if (uploadBtnBottom) {
+    uploadBtnBottom.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.click();
+    });
+  }
+  
+  if (fileInput) {
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length > 0) {
+        const validFiles = await validateAndUploadImages(files);
+        if (validFiles.length > 0) {
+          const uploadedPaths = await uploadImagesToServer(validFiles);
+          selectedImages = uploadedPaths;
+          displaySelectedImages(validFiles);
+        }
+      }
+    });
+  }
+}
 
 document.getElementById('send').addEventListener('click', ()=>{
   const qEl = document.getElementById('query');
@@ -465,8 +651,10 @@ document.getElementById('send').addEventListener('click', ()=>{
   const userMsg = appendMessage('user', q);
   // show loading gif under the user's message
   try{ showLoadingGifUnder(userMsg); }catch(e){}
-  ws.send(JSON.stringify({type:'query', payload:{text:q}}));
+  ws.send(JSON.stringify({type:'query', payload:{text:q, image_paths: selectedImages}}));
   qEl.value = '';
+  selectedImages = [];
+  displaySelectedImages([]);
 });
 
 // Bottom search: mirror main search behavior and show when main search scrolls out
@@ -509,11 +697,13 @@ if(bottomBar){
         // reuse appendMessage and ws send
         const userMsg = appendMessage('user', q);
         try{ showLoadingGifUnder(userMsg); }catch(e){}
-        ws.send(JSON.stringify({type:'query', payload:{text:q}}));
+        ws.send(JSON.stringify({type:'query', payload:{text:q, image_paths: selectedImages}}));
         queryBottom.value = '';
       // if main query exists and is visible, also sync value there (optional)
       const mainQ = document.getElementById('query');
       if(mainQ) mainQ.value = '';
+      selectedImages = [];
+      displaySelectedImages([]);
     });
   }
     // Pressing Enter in the main query input should act like clicking Send
@@ -553,3 +743,6 @@ if(bottomBar){
   // small debounce on load to ensure layout is ready
   setTimeout(updateBottomVisibility, 80);
 }
+
+// Initialize image upload handlers on page load
+setupImageUploadHandlers();
