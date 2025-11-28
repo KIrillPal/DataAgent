@@ -4,6 +4,10 @@ run_server: true
 file_root: .
 postgres: null
 
+image:
+  min_file_size: 1024          # 1 KB minimum
+  max_file_size: 20971520      # 20 MB maximum
+
 inference:
   type: auto
   vllm:

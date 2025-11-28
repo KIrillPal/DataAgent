@@ -25,6 +25,19 @@ manager = ConnectionManager()
 data_agent_messenger = DataAgentMessenger()
 message_handler = MessageHandler(manager, data_agent_messenger)
 
+# Config storage (set by cli.py when initializing the server)
+_app_config = None
+
+def set_app_config(cfg):
+    """Set the app configuration from Hydra config."""
+    global _app_config
+    _app_config = cfg
+
+def get_app_config():
+    """Get the app configuration."""
+    global _app_config
+    return _app_config or {}
+
 # Static files configuration
 ROOT = Path(__file__).parent / "../.." / "static"
 ROOT = ROOT.resolve()
@@ -44,10 +57,29 @@ async def index():
 async def list_dir_wrapper(path: str = ".", max_items: int = 100):
     return list_dir(path, max_items)
 
+@app.get("/api/config/image-limits")
+async def get_image_limits():
+    """Get image file size limits from config."""
+    cfg = get_app_config()
+    image_config = cfg.get('image', {})
+    return JSONResponse(
+        status_code=200,
+        content={
+            "min_file_size": image_config.get('min_file_size', 1024),
+            "max_file_size": image_config.get('max_file_size', 20 * 1024 * 1024)
+        }
+    )
+
 @app.post('/api/upload_image')
 async def upload_image(file: UploadFile = File(...)):
     """Upload an image file to temporary storage on the server."""
     try:
+        # Get config limits
+        cfg = get_app_config()
+        image_config = cfg.get('image', {})
+        min_size = image_config.get('min_file_size', 1024)  # 1 KB default
+        max_size = image_config.get('max_file_size', 20 * 1024 * 1024)  # 20 MB default
+        
         # Validate file is an image
         if not file.content_type or not file.content_type.startswith('image/'):
             return JSONResponse(
@@ -61,6 +93,19 @@ async def upload_image(file: UploadFile = File(...)):
             return JSONResponse(
                 status_code=400,
                 content={"error": "Empty file"}
+            )
+        
+        # Check file size
+        file_size = len(contents)
+        if file_size < min_size:
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"File too small (minimum {min_size} bytes)"}
+            )
+        if file_size > max_size:
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"File too large (maximum {max_size} bytes)"}
             )
         
         # Verify it's a valid image by trying to open it

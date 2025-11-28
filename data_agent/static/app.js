@@ -4,9 +4,18 @@ const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${l
 // Global state for image uploads
 let selectedImages = [];
 let imageDisplayElement = null;
+let imageLimits = {
+  min_file_size: 1024,          // 1 KB default
+  max_file_size: 20 * 1024 * 1024  // 20 MB default
+};
 
 ws.addEventListener('open', ()=>{
   console.log('ws open')
+  // fetch image size limits from config
+  fetch('/api/config/image-limits').then(r=>r.json()).then(d=>{
+    imageLimits = d;
+    console.log('Image limits loaded:', imageLimits);
+  }).catch(e=>console.error('config load err',e));
   // fetch root filesystem listing on connect
   fetch('/api/list_dir?path=.').then(r=>r.json()).then(d=>{
     if(d.items) renderFsRoot(d.items);
@@ -470,9 +479,16 @@ async function validateAndUploadImages(files) {
       continue;
     }
     
-    // Check file size (max 20MB)
-    if (file.size > 20 * 1024 * 1024) {
-      errors.push(`${file.name}: File too large (max 20MB)`);
+    // Check file size against config limits
+    const fileSize = file.size;
+    if (fileSize < imageLimits.min_file_size) {
+      const minSizeKB = (imageLimits.min_file_size / 1024).toFixed(1);
+      errors.push(`${file.name}: File too small (minimum ${minSizeKB} KB)`);
+      continue;
+    }
+    if (fileSize > imageLimits.max_file_size) {
+      const maxSizeMB = (imageLimits.max_file_size / (1024 * 1024)).toFixed(1);
+      errors.push(`${file.name}: File too large (maximum ${maxSizeMB} MB)`);
       continue;
     }
     
