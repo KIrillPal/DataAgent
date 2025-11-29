@@ -1,0 +1,16 @@
+{
+    "chartjs": {
+        "command": "node",
+        "args": ["./data_agent/mcp/chartjs-mcp-server/dist/index.js"],
+        "transport": "stdio"
+    },
+    "paddleocr-ocr": {
+      "command": "paddleocr_mcp",
+      "args": [],
+      "env": {
+        "PADDLEOCR_MCP_PIPELINE": "OCR",
+        "PADDLEOCR_MCP_PPOCR_SOURCE": "local"
+      },
+      "transport": "stdio"
+    }
+}

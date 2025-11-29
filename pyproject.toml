@@ -25,7 +25,9 @@ langchain-community = "^0.4.1"
 num2words = "^0.5.14"
 langchain-anthropic = "^1.2.0"
 pillow = "^12.0.0"
-paddleocr-mcp = "^0.4.0"
+paddleocr-mcp = {extras = ["local-cpu"], version = "^0.4.0"}
+paddleocr = {extras = ["all"], version = "^3.3.2"}
+fastmcp = ">=2.13"
 
 
 

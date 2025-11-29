@@ -6,5 +6,5 @@ filesystem:
     - file_search
   visualize: True
 mcp:
-  enabled: False
-  path: configs/agent/tools/mcp/default.json
+  enabled: True
+  path: configs/agent/tools/mcp/local.json
