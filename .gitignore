@@ -167,3 +167,6 @@ cython_debug/
 # Datasets
 datasets/
 data/
+
+# ipynb notes
+notes/
