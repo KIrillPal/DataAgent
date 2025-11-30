@@ -3,7 +3,7 @@ defaults:
 - _self_
 
 provider: vllm
-model: HuggingFaceTB/SmolVLM2-2.2B-Instruct
+model: Qwen/Qwen3-VL-2B-Instruct
 api_env_var: null
 
 parameters:
@@ -12,8 +12,9 @@ parameters:
 
 vllm:
   parameters:
-    max_model_len: 2048
+    max_model_len: 100000
     max_num_seqs: 1
-  tool_call_parser: pythonic
+  tool_call_parser: hermes
+  
 
 

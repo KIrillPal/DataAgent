@@ -100,9 +100,9 @@ class MessageHandler:
         for message in messages[1:]:  # Skip first message to avoid echoing user's query back
             if tool_calls := self.__extract_tool_calls(message):
                 await self.manager.send_json(client_id, {"type": "tool_calls", "payload": tool_calls})
-                continue
+                # continue
 
-            if content := self.__extract_content(message, message_type='AIMessage'):
+            if content := self.__extract_content(message):
                     send_text = content if first_piece else f" {content}"
                     first_piece = False
                     results.append({'content': send_text})

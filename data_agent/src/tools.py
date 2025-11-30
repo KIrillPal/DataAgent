@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import shutil
 from PIL import Image
+import threading
 
 
 def init_filesystem_tools(tool_config: Dict):
@@ -36,12 +37,18 @@ def init_ocr_tool(tool_config: Dict):
     
     # Initialize PaddleOCR once
     ocr_instance = PaddleOCR(use_angle_cls=True, lang='en')
+    ocr_calls = set()
+    ocr_mutex = threading.Lock()
     
     def recognize_text_in_image(image_path: str) -> str:
         try:
             # Validate image exists and can be opened
             if not Path(image_path).exists():
                 return f"<div class='ocr-error'>Error: Image file not found at {image_path}</div>"
+            
+            if image_path in ocr_calls:
+                return ""
+            ocr_calls.add(image_path)
             
             img = Image.open(image_path)
             img_width, img_height = img.size
@@ -102,7 +109,6 @@ def init_ocr_tool(tool_config: Dict):
             
             # Use URL instead of base64
             image_url = f"/api/ocr-image/{image_filename}"
-            download_url = image_url
             
             # Create HTML structure with relative positioning
             html = f'''
@@ -123,8 +129,6 @@ def init_ocr_tool(tool_config: Dict):
 </div>
 <script>update_containers()</script>
 '''
-            with open("debug_ocr_output.html", "w") as debug_file:
-                debug_file.write(html)
             print(html)            
             return html
             
@@ -145,7 +149,9 @@ def init_ocr_tool(tool_config: Dict):
             str: HTML element with interactive OCR card and extracted text.
             Paste this result directly into the chat to display the OCR output.
         """
-        return recognize_text_in_image(image_path)
+        with ocr_mutex:
+            return recognize_text_in_image(image_path)
+        return ""
 
     return [ocr]
 

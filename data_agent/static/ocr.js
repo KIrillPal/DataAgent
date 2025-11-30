@@ -4,8 +4,6 @@ function update_containers() {
         const boxes = JSON.parse(container.dataset.boxes || '[]');
         const overlay = container.querySelector('.ocr-overlay');
         const img = container.querySelector('.ocr-image');
-        const downloadBtn = container.querySelector('.ocr-download-btn');
-        const textArea = container.querySelector('.ocr-text-area');
         
         if (overlay && img) {
             img.onload = function() {
@@ -17,7 +15,11 @@ function update_containers() {
                     boxDiv.style.width = box.width + "%";
                     boxDiv.style.height = box.height + "%";
                     boxDiv.setAttribute("data-text", box.text);
-                    boxDiv.title = box.text + " (" + (box.confidence * 100).toFixed(1) + "%)";
+                    
+                    const tooltip = document.createElement("div");
+                    tooltip.className = "ocr-tooltip";
+                    tooltip.textContent = box.text + " (" + (box.confidence * 100).toFixed(1) + "%)";
+                    boxDiv.appendChild(tooltip);
                     
                     boxDiv.addEventListener('click', function(e) {
                         e.stopPropagation();
@@ -33,25 +35,6 @@ function update_containers() {
                 });
             };
             if (img.complete) img.onload();
-        }
-        
-        // Handle download button
-        if (downloadBtn && textArea) {
-            downloadBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const text = textArea.value;
-                if (text) {
-                    const blob = new Blob([text], { type: 'text/plain' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'ocr-text.txt';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                }
-            });
         }
     });
 }

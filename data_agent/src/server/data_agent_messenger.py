@@ -24,12 +24,13 @@ class DataAgentMessenger:
 
             
             server_args = config.model.vllm.server_args
-            server_args.update(config.model.get('vllm_parameters', {}))
+            server_args.update(config.model.vllm.get('parameters', {}))
 
             self.vllm = VLLMServer(
                 model_name=config.model.model,
                 host=config.model.vllm.host,
                 port=config.model.vllm.port,
+                tool_call_parser=config.model.vllm.tool_call_parser,
                 server_args=server_args
             )
             if start:

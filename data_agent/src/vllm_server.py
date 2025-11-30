@@ -13,11 +13,13 @@ class VLLMServer:
                  model_name: str = "HuggingFaceTB/SmolVLM-Instruct",
                  host: str = "localhost",
                  port: int = 8000,
+                 tool_call_parser: str = "pythonic",
                  server_args: Optional[Dict[str, Any]] = None):
         self.model_name = model_name
         self.host = host
         self.port = port
         self.base_url = f"http://{host}:{port}/v1"
+        self.tool_call_parser = tool_call_parser
         self.process = None
         self.is_running = False
         
@@ -40,7 +42,7 @@ class VLLMServer:
                 "--host", self.host,
                 "--port", str(self.port),
                 "--enable-auto-tool-choice", 
-                "--tool-call-parser", "pythonic",
+                "--tool-call-parser", self.tool_call_parser,
             ]
             
             for key, value in self.server_args.items():
