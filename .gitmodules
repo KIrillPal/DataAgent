@@ -3,4 +3,4 @@
 	url = https://github.com/ax-crew/chartjs-mcp-server.git
 [submodule "data_agent/mcp/PaddleX"]
 	path = data_agent/mcp/PaddleX
-	url = https://github.com/PaddlePaddle/PaddleX.git
+	url = git@github.com:KIrillPal/PaddleX.git
