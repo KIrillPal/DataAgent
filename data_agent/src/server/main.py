@@ -57,6 +57,35 @@ async def index():
 async def list_dir_wrapper(path: str = ".", max_items: int = 100):
     return list_dir(path, max_items)
 
+@app.get("/api/ocr-image/{image_id}")
+async def get_ocr_image(image_id: str):
+    """Serve OCR processed images."""
+    try:
+        ocr_dir = Path(tempfile.gettempdir()) / "dataagent_ocr"
+        image_path = ocr_dir / image_id
+        
+        if not image_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Image not found"}
+            )
+        
+        # Verify the path is within the ocr directory (security check)
+        try:
+            image_path.relative_to(ocr_dir)
+        except ValueError:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "Access denied"}
+            )
+        
+        return FileResponse(str(image_path))
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
 @app.get("/api/config/image-limits")
 async def get_image_limits():
     """Get image file size limits from config."""

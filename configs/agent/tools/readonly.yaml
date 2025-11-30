@@ -6,5 +6,8 @@ filesystem:
     - file_search
   visualize: True
 mcp:
-  enabled: True
+  enabled: False
   path: configs/agent/tools/mcp/local.json
+ocr:
+  enabled: True
+  use_gpu: False

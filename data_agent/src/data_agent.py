@@ -214,6 +214,10 @@ class DataAgent:
         for img_p in image_paths:
             base64_image = self._image_to_base64(img_p)
             content.append({
+                "type": "text",
+                "text": f"[Attached image path: {str(img_p)}]"
+            })
+            content.append({
                 "type": "image_url",
                 "image_url": { "url": f"data:image/jpeg;base64,{base64_image}" }
             })

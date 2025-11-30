@@ -173,6 +173,161 @@ button{background:var(--panel);border:0;color:#fff;padding:10px 14px;border-radi
 .loading-gif-wrapper{padding:8px 0 18px 0;display:flex;justify-content:left}
 .loading-gif{width:140px;height:auto;display:block;border-radius:6px}
 
+/* OCR Card Styles */
+.ocr-container{margin:12px 0;width:100%}
+
+.ocr-card{
+  background:var(--card);
+  border:1px solid rgba(143,107,214,0.2);
+  border-radius:12px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+.ocr-image-wrapper{
+  position:relative;
+  width:100%;
+  background:rgba(0,0,0,0.3);
+  border-bottom:1px solid rgba(143,107,214,0.15);
+}
+
+.ocr-image{
+  width:100%;
+  height:auto;
+  display:block;
+  max-height:500px;
+  object-fit:contain;
+}
+
+.ocr-overlay{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  pointer-events:auto;
+}
+
+.ocr-text-box{
+  fill:rgba(143,107,214,0.05);
+  stroke:rgba(143,107,214,0.3);
+  stroke-width:1;
+  transition:all 150ms ease;
+  cursor:pointer;
+}
+
+.ocr-text-box:hover{
+  fill:rgba(143,107,214,0.15);
+  stroke:rgba(143,107,214,0.6);
+  stroke-width:2;
+}
+
+.ocr-text-box title{
+  pointer-events:auto;
+}
+
+.ocr-download-btn{
+  position:absolute;
+  bottom:12px;
+  right:12px;
+  width:40px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(143,107,214,0.2);
+  border:1px solid rgba(143,107,214,0.4);
+  border-radius:6px;
+  color:var(--accent);
+  font-size:18px;
+  cursor:pointer;
+  text-decoration:none;
+  transition:all 150ms ease;
+  z-index:10;
+}
+
+.ocr-download-btn:hover{
+  background:rgba(143,107,214,0.35);
+  border-color:var(--accent);
+  transform:scale(1.05);
+}
+
+.ocr-download-btn:active{
+  transform:scale(0.95);
+}
+
+.ocr-text-section{
+  padding:16px;
+  background:rgba(0,0,0,0.2);
+}
+
+.ocr-text-title{
+  margin:0 0 12px 0;
+  font-size:13px;
+  font-weight:600;
+  color:var(--accent);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+
+.ocr-text-area{
+  width:100%;
+  min-height:120px;
+  padding:12px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(143,107,214,0.2);
+  border-radius:6px;
+  color:#eee;
+  font-family:monospace;
+  font-size:12px;
+  line-height:1.5;
+  resize:vertical;
+  transition:all 150ms ease;
+}
+
+.ocr-text-area:focus{
+  outline:none;
+  border-color:var(--accent);
+  background:rgba(255,255,255,0.05);
+  box-shadow:0 0 8px rgba(143,107,214,0.2);
+}
+
+.ocr-text-area::-webkit-scrollbar{
+  width:6px;
+}
+
+.ocr-text-area::-webkit-scrollbar-track{
+  background:rgba(143,107,214,0.1);
+  border-radius:3px;
+}
+
+.ocr-text-area::-webkit-scrollbar-thumb{
+  background:rgba(143,107,214,0.3);
+  border-radius:3px;
+}
+
+.ocr-text-area::-webkit-scrollbar-thumb:hover{
+  background:rgba(143,107,214,0.5);
+}
+
+.ocr-no-text{
+  padding:20px;
+  text-align:center;
+  color:var(--muted);
+  font-style:italic;
+}
+
+.ocr-error{
+  padding:16px;
+  background:rgba(220,53,69,0.15);
+  border:1px solid rgba(220,53,69,0.3);
+  border-radius:8px;
+  color:#ff6b6b;
+  margin:12px 0;
+}
+
 @media(max-width:900px){
   /* when sidebar hidden on small screens, bottom search should span full width */
   .bottom-search{left:0;width:100%;}
