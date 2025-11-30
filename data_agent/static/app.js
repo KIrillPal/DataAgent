@@ -123,9 +123,6 @@ function executeScripts(container) {
         // Заменяем старый скрипт новым (это запустит его)
         oldScript.parentNode.replaceChild(newScript, oldScript);
     });
-    
-    // Initialize OCR interactive features if present
-    initializeOCRCards(container);
 }
 
 function initializeOCRCards(container) {
@@ -517,7 +514,7 @@ async function validateAndUploadImages(files) {
   
   for (const file of files) {
     // Check file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith('image/') || file.type === 'image/webp') {
       errors.push(`${file.name}: Not an image file`);
       continue;
     }

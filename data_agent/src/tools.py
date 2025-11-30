@@ -39,7 +39,6 @@ def init_ocr_tool(tool_config: Dict):
     
     def recognize_text_in_image(image_path: str) -> str:
         try:
-            
             # Validate image exists and can be opened
             if not Path(image_path).exists():
                 return f"<div class='ocr-error'>Error: Image file not found at {image_path}</div>"
@@ -67,16 +66,22 @@ def init_ocr_tool(tool_config: Dict):
                     all_text.append(text)
                     x1, y1, x2, y2 = list(map(int, box))
                     
+                    # Convert to relative coordinates (percentages)
+                    rel_x1 = (x1 / img_width) * 100
+                    rel_y1 = (y1 / img_height) * 100
+                    rel_width = ((x2 - x1) / img_width) * 100
+                    rel_height = ((y2 - y1) / img_height) * 100
+                    
                     text_boxes.append({
-                        'x': x1,
-                        'y': y1,
-                        'width': x2 - x1,
-                        'height': y2 - y1,
+                        'x': rel_x1,
+                        'y': rel_y1,
+                        'width': rel_width,
+                        'height': rel_height,
                         'text': text,
                         'confidence': score
                     })
             
-            # Copy image to OCR temp directory instead of encoding to base64
+            # Copy image to OCR temp directory
             ocr_dir = Path(tempfile.gettempdir()) / "dataagent_ocr"
             ocr_dir.mkdir(exist_ok=True)
             
@@ -99,15 +104,13 @@ def init_ocr_tool(tool_config: Dict):
             image_url = f"/api/ocr-image/{image_filename}"
             download_url = image_url
             
-            # Create HTML structure with image URL
+            # Create HTML structure with relative positioning
             html = f'''
-<div class="ocr-container">
-<div class="ocr-card" id="{card_id}">
+<div class="ocr-container" id="{card_id}" data-boxes='{json.dumps(text_boxes)}'>
+<div class="ocr-card">
 <div class="ocr-image-wrapper">
-    <img src="{image_url}" alt="OCR Image" class="ocr-image" id="{card_id}-img" />
-    <svg class="ocr-overlay" id="{card_id}-svg" viewBox="0 0 {img_width} {img_height}">
-    <!-- Text boxes will be inserted here -->
-    </svg>
+    <img src="{image_url}" alt="OCR Image" class="ocr-image" />
+    <div class="ocr-overlay"></div>
     <a href="{download_url}" download="ocr-result.jpg" class="ocr-download-btn" title="Download image">⬇</a>
 </div>
 <div class="ocr-text-section">
@@ -116,39 +119,11 @@ def init_ocr_tool(tool_config: Dict):
 </div>
 </div>
 </div>
-
-<script>
-(function() {{
-const cardId = "{card_id}";
-const textBoxes = {json.dumps(text_boxes)};
-const svg = document.getElementById(cardId + "-svg");
-
-if (svg) {{
-// Create rect elements for each text box
-textBoxes.forEach((box, idx) => {{
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", box.x);
-    rect.setAttribute("y", box.y);
-    rect.setAttribute("width", box.width);
-    rect.setAttribute("height", box.height);
-    rect.setAttribute("class", "ocr-text-box");
-    rect.setAttribute("data-text", box.text);
-    rect.setAttribute("data-confidence", box.confidence);
-    
-    // Create title for tooltip
-    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    title.textContent = box.text + " (confidence: " + (box.confidence * 100).toFixed(1) + "%)";
-    rect.appendChild(title);
-    
-    svg.appendChild(rect);
-}});
-}}
-}})();
-</script>
+<script>update_containers()</script>
 '''
             with open("debug_ocr_output.html", "w") as debug_file:
                 debug_file.write(html)
-            print(html)
+            print(html)            
             return html
             
         except Exception as e:
