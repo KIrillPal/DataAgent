@@ -125,46 +125,6 @@ function executeScripts(container) {
     });
 }
 
-function initializeOCRCards(container) {
-    // Initialize OCR card interactions
-    const ocrCards = container.querySelectorAll('.ocr-card');
-    ocrCards.forEach(card => {
-        const overlay = card.querySelector('.ocr-overlay');
-        const textArea = card.querySelector('.ocr-text-area');
-        const textBoxes = overlay ? overlay.querySelectorAll('.ocr-text-box') : [];
-        
-        // Handle image wrapper resize for responsive SVG
-        const imageWrapper = card.querySelector('.ocr-image-wrapper');
-        if (imageWrapper && overlay) {
-            const resizeObserver = new ResizeObserver(() => {
-                const img = imageWrapper.querySelector('.ocr-image');
-                if (img && img.naturalWidth) {
-                    const scale = imageWrapper.offsetWidth / img.naturalWidth;
-                    overlay.style.transform = `scale(${1 / scale})`;
-                    overlay.style.transformOrigin = '0 0';
-                }
-            });
-            resizeObserver.observe(imageWrapper);
-        }
-        
-        // Highlight text box on click and copy to clipboard
-        textBoxes.forEach(box => {
-            box.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const text = box.getAttribute('data-text');
-                if (navigator.clipboard && text) {
-                    navigator.clipboard.writeText(text).then(() => {
-                        // Visual feedback
-                        const originalFill = box.getAttribute('fill');
-                        box.setAttribute('fill', 'rgba(143,107,214,0.3)');
-                        setTimeout(() => box.setAttribute('fill', originalFill), 150);
-                    });
-                }
-            });
-        });
-    });
-}
-
 function appendMessage(role, text){
     const el = document.createElement('div');
     el.className = 'msg';

@@ -111,10 +111,12 @@ def init_ocr_tool(tool_config: Dict):
 <div class="ocr-image-wrapper">
     <img src="{image_url}" alt="OCR Image" class="ocr-image" />
     <div class="ocr-overlay"></div>
-    <a href="{download_url}" download="ocr-result.jpg" class="ocr-download-btn" title="Download image">⬇</a>
 </div>
 <div class="ocr-text-section">
-    <h3 class="ocr-text-title">Extracted Text</h3>
+    <div class="ocr-text-header">
+        <h3 class="ocr-text-title">Extracted Text</h3>
+        <button class="ocr-download-btn" title="Download as .txt">Save</button>
+    </div>
     <textarea class="ocr-text-area" readonly>{' '.join(all_text)}</textarea>
 </div>
 </div>
