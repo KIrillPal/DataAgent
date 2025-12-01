@@ -168,5 +168,8 @@ cython_debug/
 datasets/
 data/
 
+# Model weights
+cache/
+
 # ipynb notes
 notes/

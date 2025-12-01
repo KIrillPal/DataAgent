@@ -44,7 +44,7 @@ def init_ocr_tool(tool_config: Dict, device: str = 'cpu'):
     if device not in ['cpu', 'gpu']:
         device = 'cpu'
     
-    ocr_instance = PaddleOCR(use_angle_cls=True, lang='en', device=device)
+    ocr_instance = PaddleOCR(use_angle_cls=True, device=device)
     ocr_calls = set()
     ocr_mutex = threading.Lock()
     
