@@ -96,7 +96,8 @@ class DataAgent:
             Tuple of (agent instance, memory instance)
         """
         tool_names = agent_config.get('tools', {})
-        self.tools = init_tools(tool_names)
+        app_config = self.config.get('app', {})
+        self.tools = init_tools(tool_names, app_config)
         self.system_prompt = agent_config.get('prompt', '')
         self.recursion_limit = agent_config.get('recursion_limit', -1)
 

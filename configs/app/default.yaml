@@ -9,11 +9,4 @@ image:
   max_file_size: 20971520      # 20 MB maximum
 
 inference:
-  type: auto
-  vllm:
-    port: 8000
-    host: 127.0.0.1
-    timeout: 7200
-    server_args:
-      max_model_len: 2048 
-      max_num_seqs: 1
+  device: cpu                  # Device for OCR and other models: 'cpu' or 'gpu'

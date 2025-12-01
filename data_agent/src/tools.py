@@ -30,19 +30,26 @@ def init_mcp_tools(tool_config: Dict):
     return asyncio.run(mcp_client.get_tools())
 
 
-def init_ocr_tool(tool_config: Dict):
-    """Initialize PaddleOCR tool for character recognition in images."""
+def init_ocr_tool(tool_config: Dict, device: str = 'cpu'):
+    """Initialize PaddleOCR tool for character recognition in images.
+    
+    Args:
+        tool_config: Tool configuration dictionary
+        device: Device to use for inference - 'cpu' or 'gpu'
+    """
     from langchain_core.tools import tool
     from paddleocr import PaddleOCR
     
-    # Initialize PaddleOCR once
-    ocr_instance = PaddleOCR(use_angle_cls=True, lang='en')
+    # Validate device
+    if device not in ['cpu', 'gpu']:
+        device = 'cpu'
+    
+    ocr_instance = PaddleOCR(use_angle_cls=True, lang='en', device=device)
     ocr_calls = set()
     ocr_mutex = threading.Lock()
     
     def recognize_text_in_image(image_path: str) -> str:
         try:
-            # Validate image exists and can be opened
             if not Path(image_path).exists():
                 return f"<div class='ocr-error'>Error: Image file not found at {image_path}</div>"
             
@@ -53,7 +60,6 @@ def init_ocr_tool(tool_config: Dict):
             img = Image.open(image_path)
             img_width, img_height = img.size
             
-            # Run OCR
             print("Running PaddleOCR on image:", image_path)
             result = ocr_instance.ocr(image_path)
             print("done", result)
@@ -61,7 +67,6 @@ def init_ocr_tool(tool_config: Dict):
             if not result or not result[0]:
                 return "<div class='ocr-card'><p class='ocr-no-text'>No text detected in image</p></div>"
             
-            # Extract text boxes and text
             text_boxes = []
             all_text = []
             
@@ -156,8 +161,19 @@ def init_ocr_tool(tool_config: Dict):
     return [ocr]
 
 
-def init(config: Dict):
+def init(config: Dict, app_config: Dict = None):
+    """Initialize tools based on configuration.
+    
+    Args:
+        config: Tool configuration dictionary
+        app_config: Application configuration with device settings
+    """
     tools = []
+    
+    # Extract device from app_config if provided
+    device = 'cpu'
+    if app_config and 'inference' in app_config and 'device' in app_config['inference']:
+        device = app_config['inference']['device']
 
     for name, tool_config in config.items():
         if not tool_config.get('enabled', False):
@@ -169,6 +185,6 @@ def init(config: Dict):
             tools.extend(init_mcp_tools(tool_config))
         
         if name == 'ocr':
-            tools.extend(init_ocr_tool(tool_config))
+            tools.extend(init_ocr_tool(tool_config, device))
     
     return tools
