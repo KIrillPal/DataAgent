@@ -5,9 +5,14 @@ from dotenv import load_dotenv
 
 import hydra
 from omegaconf import DictConfig
-from .data_agent import DataAgent
-from . import server
 import uvicorn
+
+def init_caches(cfg : DictConfig):
+    cache_dir = cfg.get('inference', {}).get('cache', None)
+    if cache_dir:
+        os.environ['HF_HOME'] = cache_dir
+        os.environ['PADDLE_PDX_CACHE_HOME'] = cache_dir
+
 
 @hydra.main(config_path="../../configs", config_name="default", version_base=None)
 def main(cfg: DictConfig) -> None:
@@ -18,6 +23,10 @@ def main(cfg: DictConfig) -> None:
         cfg: Hydra configuration
     """
     load_dotenv()  # Load environment variables to get API keys if present
+    init_caches(cfg)
+
+    from .data_agent import DataAgent
+    from . import server
 
     # If configured to run server, launch FastAPI app
     if cfg.app.get('run_server', False):

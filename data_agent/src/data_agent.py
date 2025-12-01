@@ -104,7 +104,14 @@ class DataAgent:
         """
 
         model_id = model_config['model']
-        device = model_config.get('huggingface', {}).get('device_map', 'cpu')
+        device = model_config.get('huggingface', {}).get('device_map', 'auto')
+
+        if device == 'auto':
+            app_config = self.config['app']
+            if app_config and 'inference' in app_config and 'device' in app_config['inference']:
+                device = app_config['inference']['device']
+        if device == 'auto':
+            device = 'cpu'
 
         # 1. Load the correct processor and model for the VLM
         processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)

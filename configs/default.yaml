@@ -1,4 +1,4 @@
 defaults:
-  - model: hf-smolvlm-256m-instruct.yaml
+  - model: hf-qwen3vl-2b-instruct.yaml
   - agent: react-vlm.yaml
   - app: default.yaml

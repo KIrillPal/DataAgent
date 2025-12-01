@@ -4,3 +4,5 @@ timeout: 7200
 server_args:
     max_model_len: 2048 
     max_num_seqs: 1
+    gpu_memory_utilization: 0.5
+    compilation_config: '{"cache_dir": "./cache"}'

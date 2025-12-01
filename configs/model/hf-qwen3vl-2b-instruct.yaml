@@ -7,4 +7,4 @@ parameters:
   max_tokens: 10000
 
 huggingface:
-  device_map: "cpu"
+  device_map: "auto"

@@ -9,6 +9,9 @@ import shutil
 from PIL import Image
 import threading
 
+from langchain_core.tools import tool
+from paddleocr import PaddleOCR
+
 
 def init_filesystem_tools(tool_config: Dict):
     from langchain_community.agent_toolkits import FileManagementToolkit
@@ -35,14 +38,14 @@ def init_ocr_tool(tool_config: Dict, device: str = 'cpu'):
     
     Args:
         tool_config: Tool configuration dictionary
-        device: Device to use for inference - 'cpu' or 'gpu'
+        device: Device to use for inference - 'cpu' or 'cuda'
     """
-    from langchain_core.tools import tool
-    from paddleocr import PaddleOCR
     
     # Validate device
-    if device not in ['cpu', 'gpu']:
+    if device not in ['cpu', 'cuda']:
         device = 'cpu'
+    if device == 'cuda':
+        device = 'gpu'
     
     ocr_instance = PaddleOCR(use_angle_cls=True, device=device)
     ocr_calls = set()

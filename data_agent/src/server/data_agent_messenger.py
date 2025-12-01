@@ -21,6 +21,11 @@ class DataAgentMessenger:
         try:
             if config.model.provider != VLLM_PROVIDER:
                 return None
+            
+            device = config.app.get('inference', {}).get('device', 'cuda')
+            if device != 'cuda':
+                raise ValueError(f"vLLM is only serving on GPU! Model is provided by vLLM. App is configured to run on {device}. " \
+                                 "Change app.inference.device to 'cuda' in configuration.")
 
             
             server_args = config.model.vllm.server_args

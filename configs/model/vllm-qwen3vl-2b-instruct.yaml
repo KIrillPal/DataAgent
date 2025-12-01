@@ -12,7 +12,7 @@ parameters:
 
 vllm:
   parameters:
-    max_model_len: 100000
+    max_model_len: 10000
     max_num_seqs: 1
   tool_call_parser: hermes
   
