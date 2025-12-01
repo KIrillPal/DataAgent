@@ -7,6 +7,7 @@ import os
 import signal
 
 VLLM_PROVIDER = 'vllm'
+LOCAL_PROVIDER = 'local'
 
 class VLLMServer:
     def __init__(self, 

@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Install python/pip
 RUN apt-get update && \
-    apt-get install -y python3-pip python3.11-venv
+    apt-get install -y python3-pip python3.11-venv \
+    libgl1 libglib2.0-0
 
 # Python dependencies installation
 RUN python3 -m venv ~/venv \
@@ -19,5 +20,4 @@ RUN . ~/venv/bin/activate \
 EXPOSE 8080
 
 # Run the server
-CMD bash ./data_agent/mcp/scripts/chatjs-install.sh \
-  && . ~/venv/bin/activate && python3 -m data_agent
+CMD . ~/venv/bin/activate && python3 -m data_agent

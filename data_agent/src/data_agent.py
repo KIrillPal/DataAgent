@@ -17,7 +17,7 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from transformers import AutoProcessor, AutoModelForImageTextToText, pipeline
 from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
 
-from .vllm_server import VLLM_PROVIDER
+from .vllm_server import VLLM_PROVIDER, LOCAL_PROVIDER
 from .tools import init as init_tools
 
 
@@ -29,7 +29,7 @@ class DataAgent:
         self.thread_id = str(uuid.uuid4())
         (self.agent, self.memory) = self.init_agent(config['agent'])
 
-    def init_model(self, model_config: Dict) -> Any:
+    def init_model(self, model_config: Dict, verbose: bool = True) -> Any:
         """
         Initialize the chat model based on the configuration.
         
@@ -38,8 +38,14 @@ class DataAgent:
         Returns:
             Initialized chat model instance
         """
+        if verbose:
+            print("Loading model...")
         provider = model_config['provider']
         
+        if provider == LOCAL_PROVIDER:
+            device = self._get_device()
+            provider = VLLM_PROVIDER if device == 'cuda' else 'huggingface'
+
         if provider == VLLM_PROVIDER:
             return self.init_vllm_model(model_config)
         elif provider == 'huggingface':
@@ -68,6 +74,7 @@ class DataAgent:
             **model_config.get('parameters', {})
         )
         return model
+        
     
     def init_vllm_model(self, model_config: Dict) -> Any:
         """
@@ -104,14 +111,7 @@ class DataAgent:
         """
 
         model_id = model_config['model']
-        device = model_config.get('huggingface', {}).get('device_map', 'auto')
-
-        if device == 'auto':
-            app_config = self.config['app']
-            if app_config and 'inference' in app_config and 'device' in app_config['inference']:
-                device = app_config['inference']['device']
-        if device == 'auto':
-            device = 'cpu'
+        device = self._get_device()
 
         # 1. Load the correct processor and model for the VLM
         processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
@@ -126,6 +126,7 @@ class DataAgent:
             task="image-text-to-text",
             model=model,
             processor=processor,
+            return_full_text=False,
             **model_config.get('pipeline_kwargs', {})
         )
         llm = HuggingFacePipeline(pipeline=pipe)
@@ -209,6 +210,17 @@ class DataAgent:
         if messages and not messages[-1].content:
             messages[-1].content = self.config['agent'].get('exceed_message', '')
         return messages
+    
+    def _get_device(self):
+        device = self.config['model'].get('huggingface', {}).get('device_map', 'auto')
+
+        if device == 'auto':
+            app_config = self.config['app']
+            if app_config and 'inference' in app_config and 'device' in app_config['inference']:
+                device = app_config['inference']['device']
+        if device == 'auto':
+            device = 'cpu'
+        return device
 
     def _print_message(self, header: str, msg: Any, file: TextIO = sys.stdout) -> None:
         """Print a single message with its details."""

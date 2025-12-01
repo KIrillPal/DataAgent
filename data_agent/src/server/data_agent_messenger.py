@@ -2,7 +2,7 @@ import traceback
 from pathlib import Path
 from typing import Optional, Dict
 
-from data_agent.src.vllm_server import VLLMServer, VLLM_PROVIDER
+from data_agent.src.vllm_server import VLLMServer, VLLM_PROVIDER, LOCAL_PROVIDER
 from data_agent.src.data_agent import DataAgent
 from .utils import log_msg
 
@@ -19,11 +19,13 @@ class DataAgentMessenger:
         """Initialize vLLM inference server."""
         self.vllm = None
         try:
-            if config.model.provider != VLLM_PROVIDER:
+            provider = config.model.provider
+            if provider not in [VLLM_PROVIDER, LOCAL_PROVIDER]:
                 return None
             
             device = config.app.get('inference', {}).get('device', 'cuda')
             cache_dir = config.app.get('inference', {}).get('cache', './cache')
+
             if device != 'cuda':
                 raise ValueError(f"vLLM is only serving on GPU! Model is provided by vLLM. App is configured to run on {device}. " \
                                  "Change app.inference.device to 'cuda' in configuration.")

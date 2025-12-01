@@ -2,7 +2,7 @@ defaults:
 - vllm: default.yaml
 - _self_
 
-provider: vllm
+provider: local
 model: Qwen/Qwen3-VL-2B-Instruct
 api_env_var: null
 
@@ -16,5 +16,6 @@ vllm:
     max_num_seqs: 1
   tool_call_parser: hermes
   
-
+huggingface:
+  device_map: "auto"
 

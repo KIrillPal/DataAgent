@@ -27,9 +27,10 @@ paddleocr = {extras = ["all"], version = "^3.3.0"}
 fastmcp = ">=2.13"
 transformers = "^4.57.3"
 vllm = "^0.11.2"
-paddlex = {path = "data_agent/mcp/PaddleX", extras = ["genai"]}
 langchain-huggingface = "^1.1.0"
 accelerate = "^1.12.0"
+paddlepaddle = "^3.2.2"
+paddlex = {path = "data_agent/mcp/PaddleX", extras = ["ocr"]}
 
 
 

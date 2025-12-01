@@ -30,6 +30,7 @@ def main(cfg: DictConfig) -> None:
 
     # If configured to run server, launch FastAPI app
     if cfg.app.get('run_server', False):
+        print("Initializing uvicorn server...")
         host = cfg.app.get('host', '127.0.0.1')
         port = int(cfg.app.get('port', 8080))
         server.data_agent_messenger.initialize_vllm(cfg)
@@ -39,7 +40,7 @@ def main(cfg: DictConfig) -> None:
         uvicorn.run(server.app, host=host, port=port)
         # serve VLLM inference
         return
-
+    
     agent = DataAgent(cfg)
     verbose = cfg.agent.get('verbose', False)
     

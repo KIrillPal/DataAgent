@@ -1,4 +1,4 @@
 defaults:
-  - model: vllm-qwen3vl-2b-instruct.yaml
+  - model: qwen3vl-2b-instruct.yaml
   - agent: react-vlm.yaml
   - app: default.yaml

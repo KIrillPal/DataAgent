@@ -1,4 +1,4 @@
-# How to run:
+# How to run (API):
 #   Put your API key in a local .env file with the variable name expected by your model
 #   configuration, for example: OPENROUTER_API_KEY=sk-...
 
@@ -9,13 +9,25 @@ services:
       - 8080:8080
     volumes:
       - ./configs:/app/configs:ro
-      - ./cache/:/app/cache:ro
-      - ./weights/:/app/weights:ro
+      - ./cache/:/app/cache
+      - ./weights/:/app/weights
+      - ./data_agent/:/app/data_agent
       - ./:/app:rw
     env_file:
       - .env
+    environment:
+      - HF_HOME=/app/cache/huggingface
+      - PADDLE_PDX_CACHE_HOME=/app/cache/ocr
     restart: unless-stopped
 
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost"]
       interval: 10m00s
