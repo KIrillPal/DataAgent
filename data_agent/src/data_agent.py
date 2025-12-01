@@ -14,6 +14,8 @@ from langchain_openai.chat_models.base import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langgraph.graph import StateGraph, START, MessagesState
 from langchain_core.messages import BaseMessage, HumanMessage
+from transformers import AutoProcessor, AutoModelForImageTextToText, pipeline
+from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
 
 from .vllm_server import VLLM_PROVIDER
 from .tools import init as init_tools
@@ -37,9 +39,13 @@ class DataAgent:
             Initialized chat model instance
         """
         provider = model_config['provider']
+        
         if provider == VLLM_PROVIDER:
             return self.init_vllm_model(model_config)
-        return self.init_api_model(model_config)
+        elif provider == 'huggingface':
+            return self.init_huggingface_model(model_config)
+        else:
+            return self.init_api_model(model_config)
 
     def init_api_model(self, model_config: Dict) -> Any:
         """
@@ -85,6 +91,40 @@ class DataAgent:
             **model_config.get('parameters', {})
         )
         return model
+    
+    def init_huggingface_model(self, model_config: Dict) -> Any:
+        """
+        Initialize a Hugging Face model with ChatHuggingFace for multimodal inference.
+        Correctly supports VLMs like Qwen2-VL.
+
+        Args:
+            model_config: Configuration dictionary for the model
+        Returns:
+            Initialized ChatHuggingFace instance
+        """
+
+        model_id = model_config['model']
+        device = model_config.get('huggingface', {}).get('device_map', 'cpu')
+
+        # 1. Load the correct processor and model for the VLM
+        processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
+        model = AutoModelForImageTextToText.from_pretrained(
+            model_id,
+            device_map=device,
+            dtype="auto",
+            trust_remote_code=True
+        )
+
+        pipe = pipeline(
+            task="image-text-to-text",
+            model=model,
+            processor=processor,
+            **model_config.get('pipeline_kwargs', {})
+        )
+        llm = HuggingFacePipeline(pipeline=pipe)
+        chat_model = ChatHuggingFace(llm=llm)
+
+        return chat_model
 
     def init_agent(self, agent_config: Dict) -> Any:
         """
@@ -144,14 +184,14 @@ class DataAgent:
             print("Inference started...", flush=True, file=f)
             
             # Inference
-            astream = self.agent.astream(
+            stream = self.agent.stream(
                 {"messages": [input_message]},
                 config,
                 stream_mode="values"
             )
 
             messages = []
-            async for event in astream:
+            for event in stream:
                 if "messages" in event:
                     last_msg = event["messages"][-1]
                     messages.append(last_msg)

@@ -1,0 +1,10 @@
+provider: huggingface
+model: HuggingFaceTB/SmolVLM-256M-Instruct
+api_env_var: null
+
+parameters:
+  temperature: 0.3
+  max_tokens: 10000
+
+huggingface:
+  device_map: "cpu"
