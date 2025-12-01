@@ -23,13 +23,17 @@ class DataAgentMessenger:
                 return None
             
             device = config.app.get('inference', {}).get('device', 'cuda')
+            cache_dir = config.app.get('inference', {}).get('cache', './cache')
             if device != 'cuda':
                 raise ValueError(f"vLLM is only serving on GPU! Model is provided by vLLM. App is configured to run on {device}. " \
                                  "Change app.inference.device to 'cuda' in configuration.")
+            Path(cache_dir).mkdir(exist_ok=True, parents=True)
 
             
             server_args = config.model.vllm.server_args
             server_args.update(config.model.vllm.get('parameters', {}))
+            server_args["compilation_config"] = f'{{"cache_dir": "{cache_dir}"}}'
+
 
             self.vllm = VLLMServer(
                 model_name=config.model.model,
