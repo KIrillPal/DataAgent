@@ -9,6 +9,8 @@ services:
       - 8080:8080
     volumes:
       - ./configs:/app/configs:ro
+      - ./cache/:/app/cache:ro
+      - ./weights/:/app/weights:ro
       - ./:/app:rw
     env_file:
       - .env
@@ -16,7 +18,7 @@ services:
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost"]
-      interval: 1m30s
+      interval: 10m00s
       timeout: 10s
       retries: 3
       start_period: 40s
