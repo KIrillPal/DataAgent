@@ -27,8 +27,10 @@ class DataAgentMessenger:
             cache_dir = config.app.get('inference', {}).get('cache', './cache')
 
             if device != 'cuda':
+                if provider == LOCAL_PROVIDER:
+                    return
                 raise ValueError(f"vLLM is only serving on GPU! Model is provided by vLLM. App is configured to run on {device}. " \
-                                 "Change app.inference.device to 'cuda' in configuration.")
+                    "Change app.inference.device to 'cuda' in configuration.")
             Path(cache_dir).mkdir(exist_ok=True, parents=True)
 
             
