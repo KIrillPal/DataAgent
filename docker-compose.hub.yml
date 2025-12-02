@@ -1,10 +1,13 @@
 # How to run (API):
 #   Put your API key in a local .env file with the variable name expected by your model
 #   configuration, for example: OPENROUTER_API_KEY=sk-...
+#
+# This compose file uses a pre-built image from DockerHub instead of building from source.
+# To use this: docker compose -f docker-compose.hub.yml up
 
 services:
   data_agent:
-    build: .
+    image: kirillpal/data_agent:v0.2.0
     ports:
       - 8080:8080
     volumes:

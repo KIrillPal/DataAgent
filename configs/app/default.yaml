@@ -9,5 +9,5 @@ image:
   max_file_size: 20971520      # 20 MB maximum
 
 inference:
-  device: cuda                  # Device for OCR and other models: 'cpu' or 'cuda' or 'api'.
+  device: cuda                  # Device for inference: 'cpu' or 'cuda'.
   cache: ./cache
